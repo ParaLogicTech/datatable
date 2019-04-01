@@ -250,8 +250,10 @@ export default class CellManager {
         this.$focusedCell = $cell;
         $cell.classList.add('dt-cell--focus');
 
-        if (!skipDOMFocus) {
-            // so that keyboard nav works
+        // so that keyboard nav works
+        if (skipDOMFocus) {
+            this.wrapper.focus();
+        } else {
             $cell.focus();
         }
 
@@ -288,7 +290,7 @@ export default class CellManager {
         const colHeader = $(colHeaderSelector, this.wrapper);
         const rowHeader = $(rowHeaderSelector, this.wrapper);
 
-        this.lastHeaders = [colHeader, rowHeader];
+        this.lastHeaders = [colHeader, rowHeader].filter(header => header);
         this.lastHeaders.forEach(header => header.classList.add('dt-cell--highlight'));
     }
 
@@ -725,6 +727,7 @@ export default class CellManager {
             rowIndex
         } = $.data($cell);
         this.rowmanager.scrollToRow(rowIndex);
+        $cell.focus();
         return false;
     }
 

@@ -74,6 +74,7 @@ class DataTable {
     }
 
     prepareDom() {
+        this.wrapper.tabIndex = 0;
         this.wrapper.innerHTML = `
             <div class="datatable">
                 <div class="dt-header"></div>

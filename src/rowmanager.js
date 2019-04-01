@@ -238,7 +238,7 @@ export default class RowManager {
         rowIndex = +rowIndex;
         this._lastScrollTo = this._lastScrollTo || 0;
         const $row = this.getRow$(rowIndex);
-        if ($.inViewport($row, this.bodyScrollable)) return;
+        if (!$row || $.inVerticalViewport($row, this.bodyScrollable)) return;
 
         const {
             height
