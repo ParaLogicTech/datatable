@@ -45,12 +45,15 @@ export default class Style {
             this._settingHeaderPosition = true;
 
             requestAnimationFrame(() => {
-                const scrollLeft = e.target.scrollLeft;
+                const { scrollLeft, scrollWidth, clientWidth } = e.target;
+
+                let left = this.options.direction === 'rtl' ? scrollWidth - clientWidth - scrollLeft : -scrollLeft;
+
                 $.style(this.header, {
-                    transform: `translateX(-${scrollLeft}px)`
+                    transform: `translateX(${left}px)`
                 });
                 $.style(this.footer, {
-                    transform: `translateX(-${scrollLeft}px)`
+                    transform: `translateX(${left}px)`
                 });
                 this._settingHeaderPosition = false;
             });
@@ -186,10 +189,10 @@ export default class Style {
                 column.width = naturalWidth;
             }
 
-            if (typeof naturalWidth === 'number' && naturalWidth >= this.options.minimumColumnWidth) {
+            if (typeof naturalWidth === 'number' && naturalWidth >= column.naturalWidth) {
                 column.naturalWidth = naturalWidth;
             } else {
-                column.naturalWidth = this.options.minimumColumnWidth;
+                column.naturalWidth = column.naturalWidth;
             }
         });
     }
@@ -234,8 +237,8 @@ export default class Style {
                     if (!column.width) {
                         column.width = column.naturalWidth;
                     }
-                    if (column.width < column.minWidth) {
-                        column.width = column.minWidth;
+                    if (column.width < this.options.minimumColumnWidth) {
+                        column.width = this.options.minimumColumnWidth;
                     }
                 });
         }

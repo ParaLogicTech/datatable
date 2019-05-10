@@ -76,7 +76,7 @@ class DataTable {
     prepareDom() {
         this.wrapper.tabIndex = 0;
         this.wrapper.innerHTML = `
-            <div class="datatable">
+            <div class="datatable" dir="${this.options.direction}">
                 <div class="dt-header"></div>
                 <div class="dt-scrollable"></div>
                 <div class="dt-footer"></div>
