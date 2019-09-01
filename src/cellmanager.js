@@ -54,13 +54,6 @@ export default class CellManager {
                 this.deactivateEditing();
             }
         });
-        this.keyboard.on('tab, shift+tab', (e) => {
-            if (this.$editingCell) {
-                // tab keypress on editing cell
-                this.deactivateEditing();
-                this.focusCellInDirection(e.shiftKey ? 'left' : 'right');
-            }
-        });
     }
 
     bindKeyboardNav() {
@@ -254,7 +247,7 @@ export default class CellManager {
 
         // reset header background
         if (this.lastHeaders) {
-            this.lastHeaders.forEach(header => header.classList.remove('dt-cell--highlight'));
+            this.lastHeaders.forEach(header => header && header.classList.remove('dt-cell--highlight'));
         }
     }
 
@@ -269,14 +262,14 @@ export default class CellManager {
         const rowHeaderSelector = `.dt-cell--${srNoColIndex}-${rowIndex}`;
 
         if (this.lastHeaders) {
-            this.lastHeaders.forEach(header => header.classList.remove('dt-cell--highlight'));
+            this.lastHeaders.forEach(header => header && header.classList.remove('dt-cell--highlight'));
         }
 
         const colHeader = $(colHeaderSelector, this.wrapper);
         const rowHeader = $(rowHeaderSelector, this.wrapper);
 
-        this.lastHeaders = [colHeader, rowHeader].filter(header => header);
-        this.lastHeaders.forEach(header => header.classList.add('dt-cell--highlight'));
+        this.lastHeaders = [colHeader, rowHeader];
+        this.lastHeaders.forEach(header => header && header.classList.add('dt-cell--highlight'));
     }
 
     selectAreaOnClusterChanged() {
@@ -649,8 +642,10 @@ export default class CellManager {
     }
 
     focusCellInDirection(direction) {
-        if (!this.$focusedCell || this.$editingCell) {
+        if (!this.$focusedCell) {
             return false;
+        } else if (this.$editingCell && ['tab', 'shift+tab'].includes(direction)) {
+            this.deactivateEditing();
         }
 
         let $cell = this.$focusedCell;
@@ -663,6 +658,26 @@ export default class CellManager {
             $cell = this.getAboveCell$($cell);
         } else if (direction === 'down') {
             $cell = this.getBelowCell$($cell);
+        }
+
+        if (!$cell) {
+            return false;
+        }
+
+        const {
+            colIndex
+        } = $.data($cell);
+        const column = this.columnmanager.getColumn(colIndex);
+
+        if (!column.focusable) {
+            let $prevFocusedCell = this.$focusedCell;
+            this.unfocusCell($prevFocusedCell);
+            this.$focusedCell = $cell;
+            let ret = this.focusCellInDirection(direction);
+            if (!ret) {
+                this.focusCell($prevFocusedCell);
+            }
+            return ret;
         }
 
         this.focusCell($cell);
