@@ -46,6 +46,9 @@ export default {
         desc: '↓',
         none: ''
     },
+    overrideComponents: {
+        // ColumnManager: CustomColumnManager
+    },
     filterRows: filterRows,
     freezeMessage: '',
     getEditor: null,
@@ -63,5 +66,6 @@ export default {
     dynamicRowHeight: false,
     pasteFromClipboard: false,
     showTotalRow: false,
-    direction: 'ltr'
+    direction: 'ltr',
+    disableReorderColumn: false
 };
