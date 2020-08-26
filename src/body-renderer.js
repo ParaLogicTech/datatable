@@ -93,7 +93,10 @@ export default class BodyRenderer {
             if (cell.content === '') return cell;
 
             if (this.options.hooks.columnTotal) {
-                const columnValues = this.visibleRows.filter(d => !d.meta.excludeFromTotal).map(row => row[i].content);
+                const columnValues = this.visibleRows
+                    .filter(d => !d.meta || !d.meta.excludeFromTotal)
+                    .map(row => row[i].content);
+
                 const result = this.options.hooks.columnTotal.call(this.instance, columnValues, cell);
                 if (result != null) {
                     cell.content = result;
