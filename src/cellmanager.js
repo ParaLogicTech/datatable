@@ -514,7 +514,7 @@ export default class CellManager {
                 let valuePromise = editor.getValue();
 
                 // convert to stubbed Promise
-                if (!valuePromise.then) {
+                if (!valuePromise || !valuePromise.then) {
                     valuePromise = Promise.resolve(valuePromise);
                 }
 
