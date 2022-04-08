@@ -313,6 +313,7 @@ export default class CellManager {
 
     selectArea($selectionCursor) {
         if (!this.$focusedCell) return;
+        if (this.$editingCell) return;
 
         if (this._selectArea(this.$focusedCell, $selectionCursor)) {
             // valid selection
