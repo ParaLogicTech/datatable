@@ -51,7 +51,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/frappe/datatable.git"
+    "url": "https://github.com/ParaLogicTech/datatable.git"
   },
   "keywords": [
     "datatable",
@@ -62,7 +62,7 @@
   "author": "Faris Ansari",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/frappe/datatable/issues"
+    "url": "https://github.com/ParaLogicTech/datatable/issues"
   },
   "homepage": "https://frappe.io/datatable",
   "dependencies": {
