@@ -45,9 +45,7 @@ export default class Style {
             this._settingHeaderPosition = true;
 
             requestAnimationFrame(() => {
-                const { scrollLeft, scrollWidth, clientWidth } = e.target;
-
-                let left = this.options.direction === 'rtl' ? scrollWidth - clientWidth - scrollLeft : -scrollLeft;
+                const left = -e.target.scrollLeft;
 
                 $.style(this.header, {
                     transform: `translateX(${left}px)`
@@ -191,11 +189,6 @@ export default class Style {
 
             let naturalWidth = $.style($('.dt-cell__content', $cell), 'width');
 
-            if (column.id === '_rowIndex') {
-                naturalWidth = this.getRowIndexColumnWidth();
-                column.width = naturalWidth;
-            }
-
             if (typeof naturalWidth === 'number' && naturalWidth >= column.naturalWidth) {
                 column.naturalWidth = naturalWidth;
             } else {
@@ -243,6 +236,9 @@ export default class Style {
                 .map(column => {
                     if (!column.width) {
                         column.width = column.naturalWidth;
+                    }
+                    if (column.id === '_rowIndex') {
+                        column.width = this.getRowIndexColumnWidth();
                     }
                     if (column.width < this.options.minimumColumnWidth) {
                         column.width = this.options.minimumColumnWidth;

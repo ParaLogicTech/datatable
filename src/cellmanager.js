@@ -133,7 +133,10 @@ export default class CellManager {
     bindCopyCellContents() {
         this.keyboard.on('ctrl+c', () => {
             const noOfCellsCopied = this.copyCellContents(this.$focusedCell, this.$selectionCursor);
-            const message = `${noOfCellsCopied} cell${noOfCellsCopied > 1 ? 's' : ''} copied`;
+            const message = this.instance.translate('{count} cells copied', {
+                count: noOfCellsCopied
+            });
+
             if (noOfCellsCopied) {
                 this.instance.showToastMessage(message, 2);
             }
@@ -520,11 +523,14 @@ export default class CellManager {
                 }
 
                 promise = valuePromise.then((value) => {
-                    const done = editor.setValue(value, rowIndex, col);
                     const oldValue = this.getCell(colIndex, rowIndex).content;
 
+                    if (oldValue === value) return false;
+
+                    const done = editor.setValue(value, rowIndex, col);
+
                     // update cell immediately
-                    this.updateCell(colIndex, rowIndex, value);
+                    this.updateCell(colIndex, rowIndex, value, true);
                     $cell.focus();
 
                     if (done && done.then) {
@@ -602,7 +608,7 @@ export default class CellManager {
             let rowIndex = i + focusedCell.rowIndex;
             row.forEach((cell, j) => {
                 let colIndex = j + focusedCell.colIndex;
-                this.updateCell(colIndex, rowIndex, cell);
+                this.updateCell(colIndex, rowIndex, cell, true);
             });
         });
     }
@@ -617,16 +623,16 @@ export default class CellManager {
         }
     }
 
-    updateCell(colIndex, rowIndex, value) {
+    updateCell(colIndex, rowIndex, value, refreshHtml = false) {
         const cell = this.datamanager.updateCell(colIndex, rowIndex, {
             content: value
         });
-        this.refreshCell(cell);
+        this.refreshCell(cell, refreshHtml);
     }
 
-    refreshCell(cell) {
+    refreshCell(cell, refreshHtml = false) {
         const $cell = $(this.selector(cell.colIndex, cell.rowIndex), this.bodyScrollable);
-        $cell.innerHTML = this.getCellContent(cell);
+        $cell.innerHTML = this.getCellContent(cell, refreshHtml);
     }
 
     toggleTreeButton(rowIndex, flag) {
@@ -643,7 +649,7 @@ export default class CellManager {
     }
 
     focusCellInDirection(direction) {
-        if (!this.$focusedCell) {
+        if (!this.$focusedCell || (this.$editingCell && ['left', 'right', 'up', 'down'].includes(direction))) {
             return false;
         } else if (this.$editingCell && ['left', 'right', 'up', 'down'].includes(direction)) {
             return false;
@@ -804,7 +810,7 @@ export default class CellManager {
         `;
     }
 
-    getCellContent(cell) {
+    getCellContent(cell, refreshHtml = false) {
         const {
             isHeader,
             isFilter,
@@ -827,15 +833,18 @@ export default class CellManager {
         const hasDropdown = isHeader && cell.dropdown !== false;
         const dropdown = hasDropdown ? this.columnmanager.getDropdownHTML() : '';
 
-        const customFormatter = cell.format || (cell.column && cell.column.format) || null;
-
+        let customFormatter = CellManager.getCustomCellFormatter(cell);
         let contentHTML;
         if (isHeader || isFilter || !customFormatter) {
             contentHTML = cell.content;
         } else {
-            const row = this.datamanager.getRow(cell.rowIndex);
-            const data = this.datamanager.getData(cell.rowIndex);
-            contentHTML = customFormatter(cell.content, row, cell.column, data);
+            if (!cell.html || refreshHtml) {
+                const row = this.datamanager.getRow(cell.rowIndex);
+                const data = this.datamanager.getData(cell.rowIndex);
+                contentHTML = customFormatter(cell.content, row, cell.column, data);
+            } else {
+                contentHTML = cell.html;
+            }
         }
 
         cell.html = contentHTML;
@@ -884,5 +893,9 @@ export default class CellManager {
 
     selector(colIndex, rowIndex) {
         return `.dt-cell--${colIndex}-${rowIndex}`;
+    }
+
+    static getCustomCellFormatter(cell) {
+        return cell.format || (cell.column && cell.column.format) || null;
     }
 }

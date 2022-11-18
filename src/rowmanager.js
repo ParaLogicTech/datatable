@@ -67,7 +67,7 @@ export default class RowManager {
         const _row = this.datamanager.updateRow(row, rowIndex);
 
         _row.forEach(cell => {
-            this.cellmanager.refreshCell(cell);
+            this.cellmanager.refreshCell(cell, true);
         });
     }
 
@@ -133,7 +133,10 @@ export default class RowManager {
         const checkedRows = this.getCheckedRows();
         const count = checkedRows.length;
         if (count > 0) {
-            this.bodyRenderer.showToastMessage(`${count} row${count > 1 ? 's' : ''} selected`);
+            let message = this.instance.translate('{count} rows selected', {
+                count: count
+            });
+            this.bodyRenderer.showToastMessage(message);
         } else {
             this.bodyRenderer.clearToastMessage();
         }
@@ -325,7 +328,8 @@ export default class RowManager {
         if (props.isFilter) {
             row = row.map(cell => (Object.assign({}, cell, {
                 content: this.getFilterInput({
-                    colIndex: cell.colIndex
+                    colIndex: cell.colIndex,
+                    name: cell.name
                 }),
                 isFilter: 1,
                 isHeader: undefined,
@@ -347,8 +351,10 @@ export default class RowManager {
     }
 
     getFilterInput(props) {
+        let title = `title="Filter based on ${props.name || 'Index'}"`;
         const dataAttr = makeDataAttributeString(props);
-        return `<input class="dt-filter dt-input" type="text" ${dataAttr} tabindex="1" />`;
+        return `<input class="dt-filter dt-input" type="text" ${dataAttr} tabindex="1"
+            ${props.colIndex === 0 ? 'disabled' : title} />`;
     }
 
     selector(rowIndex) {
