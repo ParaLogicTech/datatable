@@ -114,7 +114,7 @@ export default class Style {
 
         // find and remove
         const prefixedSelector = this._getPrefixedSelector(selector);
-        const index = Array.from(this.stylesheet.cssRules)
+        const index = Array.from(this.stylesheet.cssRules || [])
             .findIndex(rule => rule.selectorText === prefixedSelector);
 
         if (index === -1) return;

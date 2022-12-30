@@ -969,6 +969,13 @@ var DataTable = (function (Sortable) {
 
     var _nativeCreate = nativeCreate;
 
+    var _nativeCreate$1 = /*#__PURE__*/Object.freeze({
+        default: _nativeCreate,
+        __moduleExports: _nativeCreate
+    });
+
+    var nativeCreate$1 = ( _nativeCreate$1 && _nativeCreate ) || _nativeCreate$1;
+
     /**
      * Removes all key-value entries from the hash.
      *
@@ -977,7 +984,7 @@ var DataTable = (function (Sortable) {
      * @memberOf Hash
      */
     function hashClear() {
-      this.__data__ = _nativeCreate ? _nativeCreate(null) : {};
+      this.__data__ = nativeCreate$1 ? nativeCreate$1(null) : {};
       this.size = 0;
     }
 
@@ -1021,7 +1028,7 @@ var DataTable = (function (Sortable) {
      */
     function hashGet(key) {
       var data = this.__data__;
-      if (_nativeCreate) {
+      if (nativeCreate$1) {
         var result = data[key];
         return result === HASH_UNDEFINED ? undefined : result;
       }
@@ -1047,7 +1054,7 @@ var DataTable = (function (Sortable) {
      */
     function hashHas(key) {
       var data = this.__data__;
-      return _nativeCreate ? (data[key] !== undefined) : hasOwnProperty$3.call(data, key);
+      return nativeCreate$1 ? (data[key] !== undefined) : hasOwnProperty$3.call(data, key);
     }
 
     var _hashHas = hashHas;
@@ -1068,7 +1075,7 @@ var DataTable = (function (Sortable) {
     function hashSet(key, value) {
       var data = this.__data__;
       this.size += this.has(key) ? 0 : 1;
-      data[key] = (_nativeCreate && value === undefined) ? HASH_UNDEFINED$1 : value;
+      data[key] = (nativeCreate$1 && value === undefined) ? HASH_UNDEFINED$1 : value;
       return this;
     }
 
@@ -1100,6 +1107,11 @@ var DataTable = (function (Sortable) {
     Hash.prototype.set = _hashSet;
 
     var _Hash = Hash;
+
+    var _Hash$1 = /*#__PURE__*/Object.freeze({
+        default: _Hash,
+        __moduleExports: _Hash
+    });
 
     /**
      * Removes all key-value entries from the list cache.
@@ -1297,6 +1309,8 @@ var DataTable = (function (Sortable) {
 
     var _Map = Map;
 
+    var Hash$1 = ( _Hash$1 && _Hash ) || _Hash$1;
+
     /**
      * Removes all key-value entries from the map.
      *
@@ -1307,9 +1321,9 @@ var DataTable = (function (Sortable) {
     function mapCacheClear() {
       this.size = 0;
       this.__data__ = {
-        'hash': new _Hash,
+        'hash': new Hash$1,
         'map': new (_Map || _ListCache),
-        'string': new _Hash
+        'string': new Hash$1
       };
     }
 
@@ -1348,6 +1362,13 @@ var DataTable = (function (Sortable) {
 
     var _getMapData = getMapData;
 
+    var _getMapData$1 = /*#__PURE__*/Object.freeze({
+        default: _getMapData,
+        __moduleExports: _getMapData
+    });
+
+    var getMapData$1 = ( _getMapData$1 && _getMapData ) || _getMapData$1;
+
     /**
      * Removes `key` and its value from the map.
      *
@@ -1358,7 +1379,7 @@ var DataTable = (function (Sortable) {
      * @returns {boolean} Returns `true` if the entry was removed, else `false`.
      */
     function mapCacheDelete(key) {
-      var result = _getMapData(this, key)['delete'](key);
+      var result = getMapData$1(this, key)['delete'](key);
       this.size -= result ? 1 : 0;
       return result;
     }
@@ -1375,7 +1396,7 @@ var DataTable = (function (Sortable) {
      * @returns {*} Returns the entry value.
      */
     function mapCacheGet(key) {
-      return _getMapData(this, key).get(key);
+      return getMapData$1(this, key).get(key);
     }
 
     var _mapCacheGet = mapCacheGet;
@@ -1390,7 +1411,7 @@ var DataTable = (function (Sortable) {
      * @returns {boolean} Returns `true` if an entry for `key` exists, else `false`.
      */
     function mapCacheHas(key) {
-      return _getMapData(this, key).has(key);
+      return getMapData$1(this, key).has(key);
     }
 
     var _mapCacheHas = mapCacheHas;
@@ -1406,7 +1427,7 @@ var DataTable = (function (Sortable) {
      * @returns {Object} Returns the map cache instance.
      */
     function mapCacheSet(key, value) {
-      var data = _getMapData(this, key),
+      var data = getMapData$1(this, key),
           size = data.size;
 
       data.set(key, value);
@@ -1581,6 +1602,13 @@ var DataTable = (function (Sortable) {
 
     var _baseIndexOf = baseIndexOf;
 
+    var _baseIndexOf$1 = /*#__PURE__*/Object.freeze({
+        default: _baseIndexOf,
+        __moduleExports: _baseIndexOf
+    });
+
+    var baseIndexOf$1 = ( _baseIndexOf$1 && _baseIndexOf ) || _baseIndexOf$1;
+
     /**
      * A specialized version of `_.includes` for arrays without support for
      * specifying an index to search from.
@@ -1592,7 +1620,7 @@ var DataTable = (function (Sortable) {
      */
     function arrayIncludes(array, value) {
       var length = array == null ? 0 : array.length;
-      return !!length && _baseIndexOf(array, value, 0) > -1;
+      return !!length && baseIndexOf$1(array, value, 0) > -1;
     }
 
     var _arrayIncludes = arrayIncludes;
@@ -1758,13 +1786,6 @@ var DataTable = (function (Sortable) {
 
     var _baseUniq = baseUniq;
 
-    var _baseUniq$1 = /*#__PURE__*/Object.freeze({
-        default: _baseUniq,
-        __moduleExports: _baseUniq
-    });
-
-    var baseUniq$1 = ( _baseUniq$1 && _baseUniq ) || _baseUniq$1;
-
     /**
      * Creates a duplicate-free version of an array, using
      * [`SameValueZero`](http://ecma-international.org/ecma-262/7.0/#sec-samevaluezero)
@@ -1784,7 +1805,7 @@ var DataTable = (function (Sortable) {
      * // => [2, 1]
      */
     function uniq(array) {
-      return (array && array.length) ? baseUniq$1(array) : [];
+      return (array && array.length) ? _baseUniq(array) : [];
     }
 
     var uniq_1 = uniq;
@@ -5014,7 +5035,7 @@ var DataTable = (function (Sortable) {
 
             // find and remove
             const prefixedSelector = this._getPrefixedSelector(selector);
-            const index = Array.from(this.stylesheet.cssRules)
+            const index = Array.from(this.stylesheet.cssRules || [])
                 .findIndex(rule => rule.selectorText === prefixedSelector);
 
             if (index === -1) return;
