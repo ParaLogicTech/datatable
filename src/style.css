@@ -141,7 +141,6 @@
     }
 
     &--header &__content {
-        padding-right: var(--dt-spacer-3);
         font-weight: bold;
     }
 

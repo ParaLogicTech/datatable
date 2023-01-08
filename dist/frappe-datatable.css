@@ -166,8 +166,6 @@
     }
 
 .dt-cell--header .dt-cell__content {
-        padding-right: 1rem;
-        padding-right: var(--dt-spacer-3);
         font-weight: bold;
     }
 

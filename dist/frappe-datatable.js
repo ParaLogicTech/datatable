@@ -552,6 +552,13 @@ var DataTable = (function (Sortable) {
 
     var toNumber_1 = toNumber;
 
+    var toNumber$1 = /*#__PURE__*/Object.freeze({
+        default: toNumber_1,
+        __moduleExports: toNumber_1
+    });
+
+    var toNumber$2 = ( toNumber$1 && toNumber_1 ) || toNumber$1;
+
     /** Error message constants. */
     var FUNC_ERROR_TEXT = 'Expected a function';
 
@@ -628,11 +635,11 @@ var DataTable = (function (Sortable) {
       if (typeof func != 'function') {
         throw new TypeError(FUNC_ERROR_TEXT);
       }
-      wait = toNumber_1(wait) || 0;
+      wait = toNumber$2(wait) || 0;
       if (isObject_1(options)) {
         leading = !!options.leading;
         maxing = 'maxWait' in options;
-        maxWait = maxing ? nativeMax(toNumber_1(options.maxWait) || 0, wait) : maxWait;
+        maxWait = maxing ? nativeMax(toNumber$2(options.maxWait) || 0, wait) : maxWait;
         trailing = 'trailing' in options ? !!options.trailing : trailing;
       }
 
@@ -1108,11 +1115,6 @@ var DataTable = (function (Sortable) {
 
     var _Hash = Hash;
 
-    var _Hash$1 = /*#__PURE__*/Object.freeze({
-        default: _Hash,
-        __moduleExports: _Hash
-    });
-
     /**
      * Removes all key-value entries from the list cache.
      *
@@ -1309,8 +1311,6 @@ var DataTable = (function (Sortable) {
 
     var _Map = Map;
 
-    var Hash$1 = ( _Hash$1 && _Hash ) || _Hash$1;
-
     /**
      * Removes all key-value entries from the map.
      *
@@ -1321,9 +1321,9 @@ var DataTable = (function (Sortable) {
     function mapCacheClear() {
       this.size = 0;
       this.__data__ = {
-        'hash': new Hash$1,
+        'hash': new _Hash,
         'map': new (_Map || _ListCache),
-        'string': new Hash$1
+        'string': new _Hash
       };
     }
 
@@ -1362,13 +1362,6 @@ var DataTable = (function (Sortable) {
 
     var _getMapData = getMapData;
 
-    var _getMapData$1 = /*#__PURE__*/Object.freeze({
-        default: _getMapData,
-        __moduleExports: _getMapData
-    });
-
-    var getMapData$1 = ( _getMapData$1 && _getMapData ) || _getMapData$1;
-
     /**
      * Removes `key` and its value from the map.
      *
@@ -1379,7 +1372,7 @@ var DataTable = (function (Sortable) {
      * @returns {boolean} Returns `true` if the entry was removed, else `false`.
      */
     function mapCacheDelete(key) {
-      var result = getMapData$1(this, key)['delete'](key);
+      var result = _getMapData(this, key)['delete'](key);
       this.size -= result ? 1 : 0;
       return result;
     }
@@ -1396,7 +1389,7 @@ var DataTable = (function (Sortable) {
      * @returns {*} Returns the entry value.
      */
     function mapCacheGet(key) {
-      return getMapData$1(this, key).get(key);
+      return _getMapData(this, key).get(key);
     }
 
     var _mapCacheGet = mapCacheGet;
@@ -1411,7 +1404,7 @@ var DataTable = (function (Sortable) {
      * @returns {boolean} Returns `true` if an entry for `key` exists, else `false`.
      */
     function mapCacheHas(key) {
-      return getMapData$1(this, key).has(key);
+      return _getMapData(this, key).has(key);
     }
 
     var _mapCacheHas = mapCacheHas;
@@ -1427,7 +1420,7 @@ var DataTable = (function (Sortable) {
      * @returns {Object} Returns the map cache instance.
      */
     function mapCacheSet(key, value) {
-      var data = getMapData$1(this, key),
+      var data = _getMapData(this, key),
           size = data.size;
 
       data.set(key, value);
@@ -1602,13 +1595,6 @@ var DataTable = (function (Sortable) {
 
     var _baseIndexOf = baseIndexOf;
 
-    var _baseIndexOf$1 = /*#__PURE__*/Object.freeze({
-        default: _baseIndexOf,
-        __moduleExports: _baseIndexOf
-    });
-
-    var baseIndexOf$1 = ( _baseIndexOf$1 && _baseIndexOf ) || _baseIndexOf$1;
-
     /**
      * A specialized version of `_.includes` for arrays without support for
      * specifying an index to search from.
@@ -1620,7 +1606,7 @@ var DataTable = (function (Sortable) {
      */
     function arrayIncludes(array, value) {
       var length = array == null ? 0 : array.length;
-      return !!length && baseIndexOf$1(array, value, 0) > -1;
+      return !!length && _baseIndexOf(array, value, 0) > -1;
     }
 
     var _arrayIncludes = arrayIncludes;
