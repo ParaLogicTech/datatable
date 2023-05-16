@@ -2,7 +2,8 @@ import {
     copyTextToClipboard,
     makeDataAttributeString,
     throttle,
-    linkProperties
+    linkProperties,
+    escapeHTML,
 } from './utils';
 import $ from './dom';
 import icons from './icons';
@@ -876,7 +877,7 @@ export default class CellManager {
             isHeader ? `dt-cell__content--header-${colIndex}` : `dt-cell__content--col-${colIndex}`
         ].join(' ');
 
-        return `
+        let cellContentHTML = `
             <div class="${className}">
                 ${contentHTML}
                 ${sortIndicator}
@@ -885,6 +886,16 @@ export default class CellManager {
             </div>
             ${editCellHTML}
         `;
+
+        let div = document.createElement('div');
+        div.innerHTML = contentHTML;
+
+        let textContent = div.textContent;
+        textContent = textContent.replace(/\s+/g, ' ').trim();
+
+        cellContentHTML = cellContentHTML.replace('>', ` title="${escapeHTML(textContent)}">`);
+
+        return cellContentHTML;
     }
 
     getEditCellHTML(colIndex) {
