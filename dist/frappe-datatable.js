@@ -304,11 +304,18 @@ var DataTable = (function (Sortable) {
 
     var _freeGlobal = freeGlobal;
 
+    var _freeGlobal$1 = /*#__PURE__*/Object.freeze({
+        default: _freeGlobal,
+        __moduleExports: _freeGlobal
+    });
+
+    var freeGlobal$1 = ( _freeGlobal$1 && _freeGlobal ) || _freeGlobal$1;
+
     /** Detect free variable `self`. */
     var freeSelf = typeof self == 'object' && self && self.Object === Object && self;
 
     /** Used as a reference to the global object. */
-    var root = _freeGlobal || freeSelf || Function('return this')();
+    var root = freeGlobal$1 || freeSelf || Function('return this')();
 
     var _root = root;
 
@@ -552,13 +559,6 @@ var DataTable = (function (Sortable) {
 
     var toNumber_1 = toNumber;
 
-    var toNumber$1 = /*#__PURE__*/Object.freeze({
-        default: toNumber_1,
-        __moduleExports: toNumber_1
-    });
-
-    var toNumber$2 = ( toNumber$1 && toNumber_1 ) || toNumber$1;
-
     /** Error message constants. */
     var FUNC_ERROR_TEXT = 'Expected a function';
 
@@ -635,11 +635,11 @@ var DataTable = (function (Sortable) {
       if (typeof func != 'function') {
         throw new TypeError(FUNC_ERROR_TEXT);
       }
-      wait = toNumber$2(wait) || 0;
+      wait = toNumber_1(wait) || 0;
       if (isObject_1(options)) {
         leading = !!options.leading;
         maxing = 'maxWait' in options;
-        maxWait = maxing ? nativeMax(toNumber$2(options.maxWait) || 0, wait) : maxWait;
+        maxWait = maxing ? nativeMax(toNumber_1(options.maxWait) || 0, wait) : maxWait;
         trailing = 'trailing' in options ? !!options.trailing : trailing;
       }
 
@@ -976,13 +976,6 @@ var DataTable = (function (Sortable) {
 
     var _nativeCreate = nativeCreate;
 
-    var _nativeCreate$1 = /*#__PURE__*/Object.freeze({
-        default: _nativeCreate,
-        __moduleExports: _nativeCreate
-    });
-
-    var nativeCreate$1 = ( _nativeCreate$1 && _nativeCreate ) || _nativeCreate$1;
-
     /**
      * Removes all key-value entries from the hash.
      *
@@ -991,7 +984,7 @@ var DataTable = (function (Sortable) {
      * @memberOf Hash
      */
     function hashClear() {
-      this.__data__ = nativeCreate$1 ? nativeCreate$1(null) : {};
+      this.__data__ = _nativeCreate ? _nativeCreate(null) : {};
       this.size = 0;
     }
 
@@ -1035,7 +1028,7 @@ var DataTable = (function (Sortable) {
      */
     function hashGet(key) {
       var data = this.__data__;
-      if (nativeCreate$1) {
+      if (_nativeCreate) {
         var result = data[key];
         return result === HASH_UNDEFINED ? undefined : result;
       }
@@ -1061,7 +1054,7 @@ var DataTable = (function (Sortable) {
      */
     function hashHas(key) {
       var data = this.__data__;
-      return nativeCreate$1 ? (data[key] !== undefined) : hasOwnProperty$3.call(data, key);
+      return _nativeCreate ? (data[key] !== undefined) : hasOwnProperty$3.call(data, key);
     }
 
     var _hashHas = hashHas;
@@ -1082,7 +1075,7 @@ var DataTable = (function (Sortable) {
     function hashSet(key, value) {
       var data = this.__data__;
       this.size += this.has(key) ? 0 : 1;
-      data[key] = (nativeCreate$1 && value === undefined) ? HASH_UNDEFINED$1 : value;
+      data[key] = (_nativeCreate && value === undefined) ? HASH_UNDEFINED$1 : value;
       return this;
     }
 
@@ -1362,6 +1355,13 @@ var DataTable = (function (Sortable) {
 
     var _getMapData = getMapData;
 
+    var _getMapData$1 = /*#__PURE__*/Object.freeze({
+        default: _getMapData,
+        __moduleExports: _getMapData
+    });
+
+    var getMapData$1 = ( _getMapData$1 && _getMapData ) || _getMapData$1;
+
     /**
      * Removes `key` and its value from the map.
      *
@@ -1372,7 +1372,7 @@ var DataTable = (function (Sortable) {
      * @returns {boolean} Returns `true` if the entry was removed, else `false`.
      */
     function mapCacheDelete(key) {
-      var result = _getMapData(this, key)['delete'](key);
+      var result = getMapData$1(this, key)['delete'](key);
       this.size -= result ? 1 : 0;
       return result;
     }
@@ -1389,7 +1389,7 @@ var DataTable = (function (Sortable) {
      * @returns {*} Returns the entry value.
      */
     function mapCacheGet(key) {
-      return _getMapData(this, key).get(key);
+      return getMapData$1(this, key).get(key);
     }
 
     var _mapCacheGet = mapCacheGet;
@@ -1404,7 +1404,7 @@ var DataTable = (function (Sortable) {
      * @returns {boolean} Returns `true` if an entry for `key` exists, else `false`.
      */
     function mapCacheHas(key) {
-      return _getMapData(this, key).has(key);
+      return getMapData$1(this, key).has(key);
     }
 
     var _mapCacheHas = mapCacheHas;
@@ -1420,7 +1420,7 @@ var DataTable = (function (Sortable) {
      * @returns {Object} Returns the map cache instance.
      */
     function mapCacheSet(key, value) {
-      var data = _getMapData(this, key),
+      var data = getMapData$1(this, key),
           size = data.size;
 
       data.set(key, value);
@@ -1939,6 +1939,21 @@ var DataTable = (function (Sortable) {
 
         return str;
     }
+    function escapeHTML(txt) {
+        if (!txt) return '';
+        let escapeHtmlMapping = {
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#39;',
+            '/': '&#x2F;',
+            '`': '&#x60;',
+            '=': '&#x3D;',
+        };
+
+        return String(txt).replace(/[&<>"'`=/]/g, (char) => escapeHtmlMapping[char] || char);
+    }
 
     class DataManager {
         constructor(options) {
@@ -2422,7 +2437,7 @@ var DataTable = (function (Sortable) {
         }
 
         filterRows(filters) {
-            return this.options.filterRows(this.rows, filters)
+            return this.options.filterRows(this.rows, filters, this)
                 .then(result => {
                     if (!result) {
                         result = this.getAllRowIndices();
@@ -3495,7 +3510,7 @@ var DataTable = (function (Sortable) {
                 isHeader ? `dt-cell__content--header-${colIndex}` : `dt-cell__content--col-${colIndex}`
             ].join(' ');
 
-            return `
+            let cellContentHTML = `
             <div class="${className}">
                 ${contentHTML}
                 ${sortIndicator}
@@ -3504,6 +3519,16 @@ var DataTable = (function (Sortable) {
             </div>
             ${editCellHTML}
         `;
+
+            let div = document.createElement('div');
+            div.innerHTML = contentHTML;
+
+            let textContent = div.textContent;
+            textContent = textContent.replace(/\s+/g, ' ').trim();
+
+            cellContentHTML = cellContentHTML.replace('>', ` title="${escapeHTML(textContent)}">`);
+
+            return cellContentHTML;
         }
 
         getEditCellHTML(colIndex) {
@@ -4073,7 +4098,13 @@ var DataTable = (function (Sortable) {
 
             // update internal map
             if (toggle) {
-                this.checkMap = Array.from(Array(this.getTotalRows())).map(c => value);
+                if (this.datamanager._filteredRows) {
+                    this.datamanager._filteredRows.forEach(f => {
+                        this.checkRow(f, toggle);
+                    });
+                } else {
+                    this.checkMap = Array.from(Array(this.getTotalRows())).map(c => value);
+                }
             } else {
                 this.checkMap = [];
             }
@@ -5409,7 +5440,7 @@ var DataTable = (function (Sortable) {
         }
     }
 
-    function filterRows(rows, filters) {
+    function filterRows(rows, filters, datamanager) {
         let filteredRowIndices = [];
 
         if (Object.keys(filters).length === 0) {
@@ -5426,7 +5457,7 @@ var DataTable = (function (Sortable) {
             const cells = filteredRows.map(row => row[colIndex]);
 
             let filter = guessFilter(keyword);
-            let filterMethod = getFilterMethod(rows, filter);
+            let filterMethod = getFilterMethod(rows, filter, datamanager);
 
             if (filterMethod) {
                 filteredRowIndices = filterMethod(filter.text, cells);
@@ -5437,11 +5468,12 @@ var DataTable = (function (Sortable) {
 
         return filteredRowIndices;
     }
-    function getFilterMethod(rows, filter) {
+    function getFilterMethod(rows, filter, datamanager) {
         const getFormattedValue = cell => {
             let formatter = CellManager.getCustomCellFormatter(cell);
             if (formatter && cell.content) {
-                cell.html = formatter(cell.content, rows[cell.rowIndex], cell.column, rows[cell.rowIndex]);
+                const data = datamanager.getData(cell.rowIndex);
+                cell.html = formatter(cell.content, rows[cell.rowIndex], cell.column, data, true);
                 return stripHTML(cell.html);
             }
             return cell.content || '';

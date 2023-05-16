@@ -1,7 +1,7 @@
 import { isNumber, stripHTML } from './utils';
 import CellManager from './cellmanager';
 
-export default function filterRows(rows, filters) {
+export default function filterRows(rows, filters, datamanager) {
     let filteredRowIndices = [];
 
     if (Object.keys(filters).length === 0) {
@@ -18,7 +18,7 @@ export default function filterRows(rows, filters) {
         const cells = filteredRows.map(row => row[colIndex]);
 
         let filter = guessFilter(keyword);
-        let filterMethod = getFilterMethod(rows, filter);
+        let filterMethod = getFilterMethod(rows, filter, datamanager);
 
         if (filterMethod) {
             filteredRowIndices = filterMethod(filter.text, cells);
@@ -30,11 +30,12 @@ export default function filterRows(rows, filters) {
     return filteredRowIndices;
 };
 
-function getFilterMethod(rows, filter) {
+function getFilterMethod(rows, filter, datamanager) {
     const getFormattedValue = cell => {
         let formatter = CellManager.getCustomCellFormatter(cell);
         if (formatter && cell.content) {
-            cell.html = formatter(cell.content, rows[cell.rowIndex], cell.column, rows[cell.rowIndex], true);
+            const data = datamanager.getData(cell.rowIndex);
+            cell.html = formatter(cell.content, rows[cell.rowIndex], cell.column, data, true);
             return stripHTML(cell.html);
         }
         return cell.content || '';

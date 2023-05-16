@@ -1926,6 +1926,21 @@ function format(str, args) {
 
     return str;
 }
+function escapeHTML(txt) {
+    if (!txt) return '';
+    let escapeHtmlMapping = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;',
+        '/': '&#x2F;',
+        '`': '&#x60;',
+        '=': '&#x3D;',
+    };
+
+    return String(txt).replace(/[&<>"'`=/]/g, (char) => escapeHtmlMapping[char] || char);
+}
 
 class DataManager {
     constructor(options) {
@@ -2409,7 +2424,7 @@ class DataManager {
     }
 
     filterRows(filters) {
-        return this.options.filterRows(this.rows, filters)
+        return this.options.filterRows(this.rows, filters, this)
             .then(result => {
                 if (!result) {
                     result = this.getAllRowIndices();
@@ -3482,7 +3497,7 @@ class CellManager {
             isHeader ? `dt-cell__content--header-${colIndex}` : `dt-cell__content--col-${colIndex}`
         ].join(' ');
 
-        return `
+        let cellContentHTML = `
             <div class="${className}">
                 ${contentHTML}
                 ${sortIndicator}
@@ -3491,6 +3506,16 @@ class CellManager {
             </div>
             ${editCellHTML}
         `;
+
+        let div = document.createElement('div');
+        div.innerHTML = contentHTML;
+
+        let textContent = div.textContent;
+        textContent = textContent.replace(/\s+/g, ' ').trim();
+
+        cellContentHTML = cellContentHTML.replace('>', ` title="${escapeHTML(textContent)}">`);
+
+        return cellContentHTML;
     }
 
     getEditCellHTML(colIndex) {
@@ -4060,7 +4085,13 @@ class RowManager {
 
         // update internal map
         if (toggle) {
-            this.checkMap = Array.from(Array(this.getTotalRows())).map(c => value);
+            if (this.datamanager._filteredRows) {
+                this.datamanager._filteredRows.forEach(f => {
+                    this.checkRow(f, toggle);
+                });
+            } else {
+                this.checkMap = Array.from(Array(this.getTotalRows())).map(c => value);
+            }
         } else {
             this.checkMap = [];
         }
@@ -5396,7 +5427,7 @@ class TranslationManager {
     }
 }
 
-function filterRows(rows, filters) {
+function filterRows(rows, filters, datamanager) {
     let filteredRowIndices = [];
 
     if (Object.keys(filters).length === 0) {
@@ -5413,7 +5444,7 @@ function filterRows(rows, filters) {
         const cells = filteredRows.map(row => row[colIndex]);
 
         let filter = guessFilter(keyword);
-        let filterMethod = getFilterMethod(rows, filter);
+        let filterMethod = getFilterMethod(rows, filter, datamanager);
 
         if (filterMethod) {
             filteredRowIndices = filterMethod(filter.text, cells);
@@ -5424,11 +5455,12 @@ function filterRows(rows, filters) {
 
     return filteredRowIndices;
 }
-function getFilterMethod(rows, filter) {
+function getFilterMethod(rows, filter, datamanager) {
     const getFormattedValue = cell => {
         let formatter = CellManager.getCustomCellFormatter(cell);
         if (formatter && cell.content) {
-            cell.html = formatter(cell.content, rows[cell.rowIndex], cell.column, rows[cell.rowIndex]);
+            const data = datamanager.getData(cell.rowIndex);
+            cell.html = formatter(cell.content, rows[cell.rowIndex], cell.column, data, true);
             return stripHTML(cell.html);
         }
         return cell.content || '';
