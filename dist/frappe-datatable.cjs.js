@@ -5966,7 +5966,7 @@ class DataTable {
 
 DataTable.instances = 0;
 
-var name = "frappe-datatable";
+var name = "@paralogic/frappe-datatable";
 var version = "0.0.0-development";
 var description = "A modern datatable library for the web";
 var main = "dist/frappe-datatable.cjs.js";
