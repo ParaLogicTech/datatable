@@ -198,9 +198,7 @@ $.inVerticalViewport = (el, parentEl) => {
 };
 
 $.scrollTop = function scrollTop(element, pixels) {
-    requestAnimationFrame(() => {
-        element.scrollTop = pixels;
-    });
+    element.scrollTo({ top: pixels, behavior: 'smooth' });
 };
 
 $.scrollbarSize = function scrollbarSize() {
@@ -5967,7 +5965,7 @@ class DataTable {
 DataTable.instances = 0;
 
 var name = "@paralogic/frappe-datatable";
-var version = "0.0.0-development";
+var version = "1.17.4";
 var description = "A modern datatable library for the web";
 var main = "dist/frappe-datatable.cjs.js";
 var unpkg = "dist/frappe-datatable.min.js";

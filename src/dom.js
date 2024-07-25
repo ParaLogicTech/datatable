@@ -192,9 +192,7 @@ $.inVerticalViewport = (el, parentEl) => {
 };
 
 $.scrollTop = function scrollTop(element, pixels) {
-    requestAnimationFrame(() => {
-        element.scrollTop = pixels;
-    });
+    element.scrollTo({ top: pixels, behavior: 'smooth' });
 };
 
 $.scrollbarSize = function scrollbarSize() {

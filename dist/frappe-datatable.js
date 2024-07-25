@@ -197,9 +197,7 @@ var DataTable = (function (Sortable) {
     };
 
     $.scrollTop = function scrollTop(element, pixels) {
-        requestAnimationFrame(() => {
-            element.scrollTop = pixels;
-        });
+        element.scrollTo({ top: pixels, behavior: 'smooth' });
     };
 
     $.scrollbarSize = function scrollbarSize() {
@@ -312,13 +310,6 @@ var DataTable = (function (Sortable) {
 
     var _root = root;
 
-    var _root$1 = /*#__PURE__*/Object.freeze({
-        default: _root,
-        __moduleExports: _root
-    });
-
-    var root$1 = ( _root$1 && _root ) || _root$1;
-
     /**
      * Gets the timestamp of the number of milliseconds that have elapsed since
      * the Unix epoch (1 January 1970 00:00:00 UTC).
@@ -336,13 +327,13 @@ var DataTable = (function (Sortable) {
      * // => Logs the number of milliseconds it took for the deferred invocation.
      */
     var now = function() {
-      return root$1.Date.now();
+      return _root.Date.now();
     };
 
     var now_1 = now;
 
     /** Built-in value references. */
-    var Symbol = root$1.Symbol;
+    var Symbol = _root.Symbol;
 
     var _Symbol = Symbol;
 
@@ -849,7 +840,7 @@ var DataTable = (function (Sortable) {
     var isFunction_1 = isFunction;
 
     /** Used to detect overreaching core-js shims. */
-    var coreJsData = root$1['__core-js_shared__'];
+    var coreJsData = _root['__core-js_shared__'];
 
     var _coreJsData = coreJsData;
 
@@ -956,13 +947,6 @@ var DataTable = (function (Sortable) {
 
     var _getValue = getValue;
 
-    var _getValue$1 = /*#__PURE__*/Object.freeze({
-        default: _getValue,
-        __moduleExports: _getValue
-    });
-
-    var getValue$1 = ( _getValue$1 && _getValue ) || _getValue$1;
-
     /**
      * Gets the native function at `key` of `object`.
      *
@@ -972,7 +956,7 @@ var DataTable = (function (Sortable) {
      * @returns {*} Returns the function if it's native, else `undefined`.
      */
     function getNative(object, key) {
-      var value = getValue$1(object, key);
+      var value = _getValue(object, key);
       return _baseIsNative(value) ? value : undefined;
     }
 
@@ -1314,7 +1298,7 @@ var DataTable = (function (Sortable) {
     var _ListCache = ListCache;
 
     /* Built-in method references that are verified to be native. */
-    var Map = _getNative(root$1, 'Map');
+    var Map = _getNative(_root, 'Map');
 
     var _Map = Map;
 
@@ -1555,11 +1539,6 @@ var DataTable = (function (Sortable) {
 
     var _baseFindIndex = baseFindIndex;
 
-    var _baseFindIndex$1 = /*#__PURE__*/Object.freeze({
-        default: _baseFindIndex,
-        __moduleExports: _baseFindIndex
-    });
-
     /**
      * The base implementation of `_.isNaN` without support for number objects.
      *
@@ -1597,8 +1576,6 @@ var DataTable = (function (Sortable) {
 
     var _strictIndexOf = strictIndexOf;
 
-    var baseFindIndex$1 = ( _baseFindIndex$1 && _baseFindIndex ) || _baseFindIndex$1;
-
     /**
      * The base implementation of `_.indexOf` without `fromIndex` bounds checks.
      *
@@ -1611,7 +1588,7 @@ var DataTable = (function (Sortable) {
     function baseIndexOf(array, value, fromIndex) {
       return value === value
         ? _strictIndexOf(array, value, fromIndex)
-        : baseFindIndex$1(array, _baseIsNaN, fromIndex);
+        : _baseFindIndex(array, _baseIsNaN, fromIndex);
     }
 
     var _baseIndexOf = baseIndexOf;
@@ -1670,7 +1647,7 @@ var DataTable = (function (Sortable) {
     var _cacheHas = cacheHas;
 
     /* Built-in method references that are verified to be native. */
-    var Set = _getNative(root$1, 'Set');
+    var Set = _getNative(_root, 'Set');
 
     var _Set = Set;
 
@@ -1793,6 +1770,13 @@ var DataTable = (function (Sortable) {
 
     var _baseUniq = baseUniq;
 
+    var _baseUniq$1 = /*#__PURE__*/Object.freeze({
+        default: _baseUniq,
+        __moduleExports: _baseUniq
+    });
+
+    var baseUniq$1 = ( _baseUniq$1 && _baseUniq ) || _baseUniq$1;
+
     /**
      * Creates a duplicate-free version of an array, using
      * [`SameValueZero`](http://ecma-international.org/ecma-262/7.0/#sec-samevaluezero)
@@ -1812,7 +1796,7 @@ var DataTable = (function (Sortable) {
      * // => [2, 1]
      */
     function uniq(array) {
-      return (array && array.length) ? _baseUniq(array) : [];
+      return (array && array.length) ? baseUniq$1(array) : [];
     }
 
     var uniq_1 = uniq;
@@ -6001,7 +5985,7 @@ var DataTable = (function (Sortable) {
     DataTable.instances = 0;
 
     var name = "@paralogic/frappe-datatable";
-    var version = "0.0.0-development";
+    var version = "1.17.4";
     var description = "A modern datatable library for the web";
     var main = "dist/frappe-datatable.cjs.js";
     var unpkg = "dist/frappe-datatable.min.js";
