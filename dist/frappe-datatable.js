@@ -312,13 +312,6 @@ var DataTable = (function (Sortable) {
 
     var _root = root;
 
-    var _root$1 = /*#__PURE__*/Object.freeze({
-        default: _root,
-        __moduleExports: _root
-    });
-
-    var root$1 = ( _root$1 && _root ) || _root$1;
-
     /**
      * Gets the timestamp of the number of milliseconds that have elapsed since
      * the Unix epoch (1 January 1970 00:00:00 UTC).
@@ -336,13 +329,13 @@ var DataTable = (function (Sortable) {
      * // => Logs the number of milliseconds it took for the deferred invocation.
      */
     var now = function() {
-      return root$1.Date.now();
+      return _root.Date.now();
     };
 
     var now_1 = now;
 
     /** Built-in value references. */
-    var Symbol = root$1.Symbol;
+    var Symbol = _root.Symbol;
 
     var _Symbol = Symbol;
 
@@ -849,13 +842,20 @@ var DataTable = (function (Sortable) {
     var isFunction_1 = isFunction;
 
     /** Used to detect overreaching core-js shims. */
-    var coreJsData = root$1['__core-js_shared__'];
+    var coreJsData = _root['__core-js_shared__'];
 
     var _coreJsData = coreJsData;
 
+    var _coreJsData$1 = /*#__PURE__*/Object.freeze({
+        default: _coreJsData,
+        __moduleExports: _coreJsData
+    });
+
+    var coreJsData$1 = ( _coreJsData$1 && _coreJsData ) || _coreJsData$1;
+
     /** Used to detect methods masquerading as native. */
     var maskSrcKey = (function() {
-      var uid = /[^.]+$/.exec(_coreJsData && _coreJsData.keys && _coreJsData.keys.IE_PROTO || '');
+      var uid = /[^.]+$/.exec(coreJsData$1 && coreJsData$1.keys && coreJsData$1.keys.IE_PROTO || '');
       return uid ? ('Symbol(src)_1.' + uid) : '';
     }());
 
@@ -956,13 +956,6 @@ var DataTable = (function (Sortable) {
 
     var _getValue = getValue;
 
-    var _getValue$1 = /*#__PURE__*/Object.freeze({
-        default: _getValue,
-        __moduleExports: _getValue
-    });
-
-    var getValue$1 = ( _getValue$1 && _getValue ) || _getValue$1;
-
     /**
      * Gets the native function at `key` of `object`.
      *
@@ -972,7 +965,7 @@ var DataTable = (function (Sortable) {
      * @returns {*} Returns the function if it's native, else `undefined`.
      */
     function getNative(object, key) {
-      var value = getValue$1(object, key);
+      var value = _getValue(object, key);
       return _baseIsNative(value) ? value : undefined;
     }
 
@@ -1167,6 +1160,13 @@ var DataTable = (function (Sortable) {
 
     var eq_1 = eq;
 
+    var eq$1 = /*#__PURE__*/Object.freeze({
+        default: eq_1,
+        __moduleExports: eq_1
+    });
+
+    var eq$2 = ( eq$1 && eq_1 ) || eq$1;
+
     /**
      * Gets the index at which the `key` is found in `array` of key-value pairs.
      *
@@ -1178,7 +1178,7 @@ var DataTable = (function (Sortable) {
     function assocIndexOf(array, key) {
       var length = array.length;
       while (length--) {
-        if (eq_1(array[length][0], key)) {
+        if (eq$2(array[length][0], key)) {
           return length;
         }
       }
@@ -1186,13 +1186,6 @@ var DataTable = (function (Sortable) {
     }
 
     var _assocIndexOf = assocIndexOf;
-
-    var _assocIndexOf$1 = /*#__PURE__*/Object.freeze({
-        default: _assocIndexOf,
-        __moduleExports: _assocIndexOf
-    });
-
-    var assocIndexOf$1 = ( _assocIndexOf$1 && _assocIndexOf ) || _assocIndexOf$1;
 
     /** Used for built-in method references. */
     var arrayProto = Array.prototype;
@@ -1211,7 +1204,7 @@ var DataTable = (function (Sortable) {
      */
     function listCacheDelete(key) {
       var data = this.__data__,
-          index = assocIndexOf$1(data, key);
+          index = _assocIndexOf(data, key);
 
       if (index < 0) {
         return false;
@@ -1239,7 +1232,7 @@ var DataTable = (function (Sortable) {
      */
     function listCacheGet(key) {
       var data = this.__data__,
-          index = assocIndexOf$1(data, key);
+          index = _assocIndexOf(data, key);
 
       return index < 0 ? undefined : data[index][1];
     }
@@ -1256,7 +1249,7 @@ var DataTable = (function (Sortable) {
      * @returns {boolean} Returns `true` if an entry for `key` exists, else `false`.
      */
     function listCacheHas(key) {
-      return assocIndexOf$1(this.__data__, key) > -1;
+      return _assocIndexOf(this.__data__, key) > -1;
     }
 
     var _listCacheHas = listCacheHas;
@@ -1273,7 +1266,7 @@ var DataTable = (function (Sortable) {
      */
     function listCacheSet(key, value) {
       var data = this.__data__,
-          index = assocIndexOf$1(data, key);
+          index = _assocIndexOf(data, key);
 
       if (index < 0) {
         ++this.size;
@@ -1314,7 +1307,7 @@ var DataTable = (function (Sortable) {
     var _ListCache = ListCache;
 
     /* Built-in method references that are verified to be native. */
-    var Map = _getNative(root$1, 'Map');
+    var Map = _getNative(_root, 'Map');
 
     var _Map = Map;
 
@@ -1352,6 +1345,13 @@ var DataTable = (function (Sortable) {
 
     var _isKeyable = isKeyable;
 
+    var _isKeyable$1 = /*#__PURE__*/Object.freeze({
+        default: _isKeyable,
+        __moduleExports: _isKeyable
+    });
+
+    var isKeyable$1 = ( _isKeyable$1 && _isKeyable ) || _isKeyable$1;
+
     /**
      * Gets the data for `map`.
      *
@@ -1362,19 +1362,12 @@ var DataTable = (function (Sortable) {
      */
     function getMapData(map, key) {
       var data = map.__data__;
-      return _isKeyable(key)
+      return isKeyable$1(key)
         ? data[typeof key == 'string' ? 'string' : 'hash']
         : data.map;
     }
 
     var _getMapData = getMapData;
-
-    var _getMapData$1 = /*#__PURE__*/Object.freeze({
-        default: _getMapData,
-        __moduleExports: _getMapData
-    });
-
-    var getMapData$1 = ( _getMapData$1 && _getMapData ) || _getMapData$1;
 
     /**
      * Removes `key` and its value from the map.
@@ -1386,7 +1379,7 @@ var DataTable = (function (Sortable) {
      * @returns {boolean} Returns `true` if the entry was removed, else `false`.
      */
     function mapCacheDelete(key) {
-      var result = getMapData$1(this, key)['delete'](key);
+      var result = _getMapData(this, key)['delete'](key);
       this.size -= result ? 1 : 0;
       return result;
     }
@@ -1403,7 +1396,7 @@ var DataTable = (function (Sortable) {
      * @returns {*} Returns the entry value.
      */
     function mapCacheGet(key) {
-      return getMapData$1(this, key).get(key);
+      return _getMapData(this, key).get(key);
     }
 
     var _mapCacheGet = mapCacheGet;
@@ -1418,7 +1411,7 @@ var DataTable = (function (Sortable) {
      * @returns {boolean} Returns `true` if an entry for `key` exists, else `false`.
      */
     function mapCacheHas(key) {
-      return getMapData$1(this, key).has(key);
+      return _getMapData(this, key).has(key);
     }
 
     var _mapCacheHas = mapCacheHas;
@@ -1434,7 +1427,7 @@ var DataTable = (function (Sortable) {
      * @returns {Object} Returns the map cache instance.
      */
     function mapCacheSet(key, value) {
-      var data = getMapData$1(this, key),
+      var data = _getMapData(this, key),
           size = data.size;
 
       data.set(key, value);
@@ -1555,11 +1548,6 @@ var DataTable = (function (Sortable) {
 
     var _baseFindIndex = baseFindIndex;
 
-    var _baseFindIndex$1 = /*#__PURE__*/Object.freeze({
-        default: _baseFindIndex,
-        __moduleExports: _baseFindIndex
-    });
-
     /**
      * The base implementation of `_.isNaN` without support for number objects.
      *
@@ -1597,8 +1585,6 @@ var DataTable = (function (Sortable) {
 
     var _strictIndexOf = strictIndexOf;
 
-    var baseFindIndex$1 = ( _baseFindIndex$1 && _baseFindIndex ) || _baseFindIndex$1;
-
     /**
      * The base implementation of `_.indexOf` without `fromIndex` bounds checks.
      *
@@ -1611,7 +1597,7 @@ var DataTable = (function (Sortable) {
     function baseIndexOf(array, value, fromIndex) {
       return value === value
         ? _strictIndexOf(array, value, fromIndex)
-        : baseFindIndex$1(array, _baseIsNaN, fromIndex);
+        : _baseFindIndex(array, _baseIsNaN, fromIndex);
     }
 
     var _baseIndexOf = baseIndexOf;
@@ -1670,7 +1656,7 @@ var DataTable = (function (Sortable) {
     var _cacheHas = cacheHas;
 
     /* Built-in method references that are verified to be native. */
-    var Set = _getNative(root$1, 'Set');
+    var Set = _getNative(_root, 'Set');
 
     var _Set = Set;
 
@@ -3418,8 +3404,8 @@ var DataTable = (function (Sortable) {
             const {
                 rowIndex
             } = $.data($cell);
-            this.rowmanager.scrollToRow(rowIndex);
             $cell.focus();
+            this.rowmanager.scrollToRow(rowIndex);
             return false;
         }
 
@@ -6001,7 +5987,7 @@ var DataTable = (function (Sortable) {
     DataTable.instances = 0;
 
     var name = "@paralogic/frappe-datatable";
-    var version = "0.0.0-development";
+    var version = "1.17.4";
     var description = "A modern datatable library for the web";
     var main = "dist/frappe-datatable.cjs.js";
     var unpkg = "dist/frappe-datatable.min.js";

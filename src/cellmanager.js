@@ -764,8 +764,8 @@ export default class CellManager {
         const {
             rowIndex
         } = $.data($cell);
-        this.rowmanager.scrollToRow(rowIndex);
         $cell.focus();
+        this.rowmanager.scrollToRow(rowIndex);
         return false;
     }
 

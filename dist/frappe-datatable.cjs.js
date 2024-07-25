@@ -3384,8 +3384,8 @@ class CellManager {
         const {
             rowIndex
         } = $.data($cell);
-        this.rowmanager.scrollToRow(rowIndex);
         $cell.focus();
+        this.rowmanager.scrollToRow(rowIndex);
         return false;
     }
 
@@ -5967,7 +5967,7 @@ class DataTable {
 DataTable.instances = 0;
 
 var name = "@paralogic/frappe-datatable";
-var version = "0.0.0-development";
+var version = "1.17.4";
 var description = "A modern datatable library for the web";
 var main = "dist/frappe-datatable.cjs.js";
 var unpkg = "dist/frappe-datatable.min.js";
