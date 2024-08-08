@@ -2261,41 +2261,11 @@ class DataManager {
     }
 
     _sortRows(colIndex, sortOrder) {
-
-        if (this.currentSort.colIndex === colIndex) {
-            // reverse the array if only sortOrder changed
-            if (
-                (this.currentSort.sortOrder === 'asc' && sortOrder === 'desc') ||
-                (this.currentSort.sortOrder === 'desc' && sortOrder === 'asc')
-            ) {
-                this.reverseArray(this.rowViewOrder);
-                this.currentSort.sortOrder = sortOrder;
-                return;
-            }
+        if (this.options.treeView) {
+            this.treeSort(colIndex, sortOrder);
+        } else {
+            this.rowViewOrder.sort((a, b) => this.compareContent(a, b, colIndex, sortOrder));
         }
-
-        this.rowViewOrder.sort((a, b) => {
-            const aIndex = a;
-            const bIndex = b;
-
-            let aContent = this.getCell(colIndex, a).content;
-            let bContent = this.getCell(colIndex, b).content;
-            aContent = aContent == null ? '' : aContent;
-            bContent = bContent == null ? '' : bContent;
-
-            if (sortOrder === 'none') {
-                return aIndex - bIndex;
-            } else if (sortOrder === 'asc') {
-                if (aContent < bContent) return -1;
-                if (aContent > bContent) return 1;
-                if (aContent === bContent) return 0;
-            } else if (sortOrder === 'desc') {
-                if (aContent < bContent) return 1;
-                if (aContent > bContent) return -1;
-                if (aContent === bContent) return 0;
-            }
-            return 0;
-        });
 
         if (this.hasColumnById('_rowIndex')) {
             // update row index
@@ -2307,6 +2277,82 @@ class DataManager {
             });
         }
     }
+
+    treeSort(colIndex, sortOrder) {
+        let tree = [];
+        let rowMap = {};
+
+        // Build Tree
+        for (let i = 0; i < this.rows.length; i++) {
+            const rowIndex = this.rows[i].meta.rowIndex;
+            const currentIndent = this.rows[i].meta.indent;
+
+            let currentNode = { parent: rowIndex, children: [] };
+            rowMap[rowIndex] = currentNode;
+
+            if (currentIndent === 0) {
+                tree.push(currentNode);
+            } else {
+                let parentIndex = rowIndex - 1;
+
+                while (parentIndex >= 0 && this.rows[parentIndex].meta.indent >= currentIndent) {
+                    parentIndex--;
+                }
+
+                if (parentIndex >= 0) {
+                    rowMap[parentIndex].children.push(currentNode);
+                }
+            }
+        }
+
+        // Sort Tree
+        this._sortTree(tree, colIndex, sortOrder);
+
+        // Row View Order
+        let flattenedTree = [];
+
+        let traverseNode = (node) => {
+            flattenedTree.push(node.parent);
+            if (node.children) {
+                node.children.forEach(child => traverseNode(child));
+            }
+        };
+
+        tree.forEach(node => traverseNode(node));
+        this.rowViewOrder = flattenedTree;
+    }
+
+    _sortTree(tree, colIndex, sortOrder) {
+        if (!tree || tree.length === 0) return;
+
+        tree.sort((a, b) => this.compareContent(a.parent, b.parent, colIndex, sortOrder));
+        tree.forEach(node => {
+            this._sortTree(node.children, colIndex, sortOrder);
+        });
+    }
+
+    compareContent(a, b, colIndex, sortOrder) {
+        const aIndex = a;
+        const bIndex = b;
+
+        let aContent = this.getCell(colIndex, a).content;
+        let bContent = this.getCell(colIndex, b).content;
+        aContent = aContent == null ? '' : aContent;
+        bContent = bContent == null ? '' : bContent;
+
+        if (sortOrder === 'none') {
+            return aIndex - bIndex;
+        } else if (sortOrder === 'asc') {
+            if (aContent < bContent) return -1;
+            if (aContent > bContent) return 1;
+            if (aContent === bContent) return 0;
+        } else if (sortOrder === 'desc') {
+            if (aContent < bContent) return 1;
+            if (aContent > bContent) return -1;
+            if (aContent === bContent) return 0;
+        }
+        return 0;
+    };
 
     reverseArray(array) {
         let left = null;
@@ -2954,7 +3000,11 @@ class CellManager {
         this.clearSelection();
         this._selectedCells = cells.map(index => this.getCell$(...index));
         requestAnimationFrame(() => {
-            this._selectedCells.map($cell => $cell.classList.add('dt-cell--highlight'));
+            this._selectedCells.forEach($cell => {
+                if ($cell && $cell.classList) {
+                    $cell.classList.add('dt-cell--highlight');
+                }
+            });
         });
         return true;
     }
@@ -3013,8 +3063,11 @@ class CellManager {
     }
 
     clearSelection() {
-        (this._selectedCells || [])
-            .forEach($cell => $cell.classList.remove('dt-cell--highlight'));
+        (this._selectedCells || []).forEach($cell => {
+            if ($cell && $cell.classList) {
+                $cell.classList.remove('dt-cell--highlight');
+            }
+        });
 
         this._selectedCells = [];
         this.$selectionCursor = null;
@@ -5967,7 +6020,7 @@ class DataTable {
 DataTable.instances = 0;
 
 var name = "@paralogic/frappe-datatable";
-var version = "0.0.0-development";
+var version = "1.17.4";
 var description = "A modern datatable library for the web";
 var main = "dist/frappe-datatable.cjs.js";
 var unpkg = "dist/frappe-datatable.min.js";
