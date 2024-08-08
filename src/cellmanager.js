@@ -334,7 +334,11 @@ export default class CellManager {
         this.clearSelection();
         this._selectedCells = cells.map(index => this.getCell$(...index));
         requestAnimationFrame(() => {
-            this._selectedCells.map($cell => $cell.classList.add('dt-cell--highlight'));
+            this._selectedCells.forEach($cell => {
+                if ($cell && $cell.classList) {
+                    $cell.classList.add('dt-cell--highlight');
+                }
+            });
         });
         return true;
     }
@@ -393,8 +397,11 @@ export default class CellManager {
     }
 
     clearSelection() {
-        (this._selectedCells || [])
-            .forEach($cell => $cell.classList.remove('dt-cell--highlight'));
+        (this._selectedCells || []).forEach($cell => {
+            if ($cell && $cell.classList) {
+                $cell.classList.remove('dt-cell--highlight');
+            }
+        });
 
         this._selectedCells = [];
         this.$selectionCursor = null;
