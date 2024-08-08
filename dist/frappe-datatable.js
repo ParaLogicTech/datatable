@@ -197,9 +197,7 @@ var DataTable = (function (Sortable) {
     };
 
     $.scrollTop = function scrollTop(element, pixels) {
-        requestAnimationFrame(() => {
-            element.scrollTop = pixels;
-        });
+        element.scrollTop = pixels;
     };
 
     $.scrollbarSize = function scrollbarSize() {
@@ -312,6 +310,13 @@ var DataTable = (function (Sortable) {
 
     var _root = root;
 
+    var _root$1 = /*#__PURE__*/Object.freeze({
+        default: _root,
+        __moduleExports: _root
+    });
+
+    var root$1 = ( _root$1 && _root ) || _root$1;
+
     /**
      * Gets the timestamp of the number of milliseconds that have elapsed since
      * the Unix epoch (1 January 1970 00:00:00 UTC).
@@ -329,13 +334,13 @@ var DataTable = (function (Sortable) {
      * // => Logs the number of milliseconds it took for the deferred invocation.
      */
     var now = function() {
-      return _root.Date.now();
+      return root$1.Date.now();
     };
 
     var now_1 = now;
 
     /** Built-in value references. */
-    var Symbol = _root.Symbol;
+    var Symbol = root$1.Symbol;
 
     var _Symbol = Symbol;
 
@@ -406,13 +411,6 @@ var DataTable = (function (Sortable) {
 
     var _objectToString = objectToString;
 
-    var _objectToString$1 = /*#__PURE__*/Object.freeze({
-        default: _objectToString,
-        __moduleExports: _objectToString
-    });
-
-    var objectToString$1 = ( _objectToString$1 && _objectToString ) || _objectToString$1;
-
     /** `Object#toString` result references. */
     var nullTag = '[object Null]',
         undefinedTag = '[object Undefined]';
@@ -433,7 +431,7 @@ var DataTable = (function (Sortable) {
       }
       return (symToStringTag$1 && symToStringTag$1 in Object(value))
         ? _getRawTag(value)
-        : objectToString$1(value);
+        : _objectToString(value);
     }
 
     var _baseGetTag = baseGetTag;
@@ -468,6 +466,13 @@ var DataTable = (function (Sortable) {
 
     var isObjectLike_1 = isObjectLike;
 
+    var isObjectLike$1 = /*#__PURE__*/Object.freeze({
+        default: isObjectLike_1,
+        __moduleExports: isObjectLike_1
+    });
+
+    var isObjectLike$2 = ( isObjectLike$1 && isObjectLike_1 ) || isObjectLike$1;
+
     /** `Object#toString` result references. */
     var symbolTag = '[object Symbol]';
 
@@ -490,7 +495,7 @@ var DataTable = (function (Sortable) {
      */
     function isSymbol(value) {
       return typeof value == 'symbol' ||
-        (isObjectLike_1(value) && _baseGetTag(value) == symbolTag);
+        (isObjectLike$2(value) && _baseGetTag(value) == symbolTag);
     }
 
     var isSymbol_1 = isSymbol;
@@ -849,20 +854,13 @@ var DataTable = (function (Sortable) {
     var isFunction_1 = isFunction;
 
     /** Used to detect overreaching core-js shims. */
-    var coreJsData = _root['__core-js_shared__'];
+    var coreJsData = root$1['__core-js_shared__'];
 
     var _coreJsData = coreJsData;
 
-    var _coreJsData$1 = /*#__PURE__*/Object.freeze({
-        default: _coreJsData,
-        __moduleExports: _coreJsData
-    });
-
-    var coreJsData$1 = ( _coreJsData$1 && _coreJsData ) || _coreJsData$1;
-
     /** Used to detect methods masquerading as native. */
     var maskSrcKey = (function() {
-      var uid = /[^.]+$/.exec(coreJsData$1 && coreJsData$1.keys && coreJsData$1.keys.IE_PROTO || '');
+      var uid = /[^.]+$/.exec(_coreJsData && _coreJsData.keys && _coreJsData.keys.IE_PROTO || '');
       return uid ? ('Symbol(src)_1.' + uid) : '';
     }());
 
@@ -1307,7 +1305,7 @@ var DataTable = (function (Sortable) {
     var _ListCache = ListCache;
 
     /* Built-in method references that are verified to be native. */
-    var Map = _getNative(_root, 'Map');
+    var Map = _getNative(root$1, 'Map');
 
     var _Map = Map;
 
@@ -1345,6 +1343,13 @@ var DataTable = (function (Sortable) {
 
     var _isKeyable = isKeyable;
 
+    var _isKeyable$1 = /*#__PURE__*/Object.freeze({
+        default: _isKeyable,
+        __moduleExports: _isKeyable
+    });
+
+    var isKeyable$1 = ( _isKeyable$1 && _isKeyable ) || _isKeyable$1;
+
     /**
      * Gets the data for `map`.
      *
@@ -1355,7 +1360,7 @@ var DataTable = (function (Sortable) {
      */
     function getMapData(map, key) {
       var data = map.__data__;
-      return _isKeyable(key)
+      return isKeyable$1(key)
         ? data[typeof key == 'string' ? 'string' : 'hash']
         : data.map;
     }
@@ -1649,9 +1654,14 @@ var DataTable = (function (Sortable) {
     var _cacheHas = cacheHas;
 
     /* Built-in method references that are verified to be native. */
-    var Set = _getNative(_root, 'Set');
+    var Set = _getNative(root$1, 'Set');
 
     var _Set = Set;
+
+    var _Set$1 = /*#__PURE__*/Object.freeze({
+        default: _Set,
+        __moduleExports: _Set
+    });
 
     /**
      * This method returns `undefined`.
@@ -1690,6 +1700,8 @@ var DataTable = (function (Sortable) {
 
     var _setToArray = setToArray;
 
+    var Set$1 = ( _Set$1 && _Set ) || _Set$1;
+
     /** Used as references for various `Number` constants. */
     var INFINITY = 1 / 0;
 
@@ -1700,8 +1712,8 @@ var DataTable = (function (Sortable) {
      * @param {Array} values The values to add to the set.
      * @returns {Object} Returns the new set.
      */
-    var createSet = !(_Set && (1 / _setToArray(new _Set([,-0]))[1]) == INFINITY) ? noop_1 : function(values) {
-      return new _Set(values);
+    var createSet = !(Set$1 && (1 / _setToArray(new Set$1([,-0]))[1]) == INFINITY) ? noop_1 : function(values) {
+      return new Set$1(values);
     };
 
     var _createSet = createSet;
@@ -1772,6 +1784,13 @@ var DataTable = (function (Sortable) {
 
     var _baseUniq = baseUniq;
 
+    var _baseUniq$1 = /*#__PURE__*/Object.freeze({
+        default: _baseUniq,
+        __moduleExports: _baseUniq
+    });
+
+    var baseUniq$1 = ( _baseUniq$1 && _baseUniq ) || _baseUniq$1;
+
     /**
      * Creates a duplicate-free version of an array, using
      * [`SameValueZero`](http://ecma-international.org/ecma-262/7.0/#sec-samevaluezero)
@@ -1791,7 +1810,7 @@ var DataTable = (function (Sortable) {
      * // => [2, 1]
      */
     function uniq(array) {
-      return (array && array.length) ? _baseUniq(array) : [];
+      return (array && array.length) ? baseUniq$1(array) : [];
     }
 
     var uniq_1 = uniq;
@@ -3451,6 +3470,7 @@ var DataTable = (function (Sortable) {
                 rowIndex
             } = $.data($cell);
             this.rowmanager.scrollToRow(rowIndex);
+            $cell.scrollIntoView({block: 'nearest', inline: 'nearest'});
             $cell.focus();
             return false;
         }
@@ -4345,22 +4365,21 @@ var DataTable = (function (Sortable) {
             const $row = this.getRow$(rowIndex);
             if (!$row || $.inVerticalViewport($row, this.bodyScrollable)) return;
 
-            const {
-                height
-            } = $row.getBoundingClientRect();
-            const {
-                top,
-                bottom
-            } = this.bodyScrollable.getBoundingClientRect();
-            const rowsInView = Math.floor((bottom - top) / height);
+            const rowHeight = $row.getBoundingClientRect().height;
+            const viewHeight = this.bodyScrollable.clientHeight;
+            const scrollTop = this.bodyScrollable.scrollTop;
 
             let offset = 0;
+            const rowTop = $row.getBoundingClientRect().top - this.bodyScrollable.getBoundingClientRect().top + scrollTop;
+            const rowBottom = rowTop + rowHeight;
+
             if (rowIndex > this._lastScrollTo) {
-                offset = height * ((rowIndex + 1) - rowsInView);
+                offset = rowBottom - viewHeight;
             } else {
-                offset = height * ((rowIndex + 1) - 1);
+                offset = rowTop;
             }
 
+            offset = Math.max(0, Math.min(offset, this.bodyScrollable.scrollHeight - viewHeight));
             this._lastScrollTo = rowIndex;
             $.scrollTop(this.bodyScrollable, offset);
         }
@@ -6033,7 +6052,7 @@ var DataTable = (function (Sortable) {
     DataTable.instances = 0;
 
     var name = "@paralogic/frappe-datatable";
-    var version = "1.17.4";
+    var version = "1.17.5";
     var description = "A modern datatable library for the web";
     var main = "dist/frappe-datatable.cjs.js";
     var unpkg = "dist/frappe-datatable.min.js";

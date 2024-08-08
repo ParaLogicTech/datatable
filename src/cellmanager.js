@@ -772,6 +772,7 @@ export default class CellManager {
             rowIndex
         } = $.data($cell);
         this.rowmanager.scrollToRow(rowIndex);
+        $cell.scrollIntoView({block: 'nearest', inline: 'nearest'});
         $cell.focus();
         return false;
     }

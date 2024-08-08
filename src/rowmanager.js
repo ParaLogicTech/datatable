@@ -307,22 +307,21 @@ export default class RowManager {
         const $row = this.getRow$(rowIndex);
         if (!$row || $.inVerticalViewport($row, this.bodyScrollable)) return;
 
-        const {
-            height
-        } = $row.getBoundingClientRect();
-        const {
-            top,
-            bottom
-        } = this.bodyScrollable.getBoundingClientRect();
-        const rowsInView = Math.floor((bottom - top) / height);
+        const rowHeight = $row.getBoundingClientRect().height;
+        const viewHeight = this.bodyScrollable.clientHeight;
+        const scrollTop = this.bodyScrollable.scrollTop;
 
         let offset = 0;
+        const rowTop = $row.getBoundingClientRect().top - this.bodyScrollable.getBoundingClientRect().top + scrollTop;
+        const rowBottom = rowTop + rowHeight;
+
         if (rowIndex > this._lastScrollTo) {
-            offset = height * ((rowIndex + 1) - rowsInView);
+            offset = rowBottom - viewHeight;
         } else {
-            offset = height * ((rowIndex + 1) - 1);
+            offset = rowTop;
         }
 
+        offset = Math.max(0, Math.min(offset, this.bodyScrollable.scrollHeight - viewHeight));
         this._lastScrollTo = rowIndex;
         $.scrollTop(this.bodyScrollable, offset);
     }
