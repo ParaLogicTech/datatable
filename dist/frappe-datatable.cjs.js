@@ -198,9 +198,7 @@ $.inVerticalViewport = (el, parentEl) => {
 };
 
 $.scrollTop = function scrollTop(element, pixels) {
-    requestAnimationFrame(() => {
-        element.scrollTop = pixels;
-    });
+    element.scrollTop = pixels;
 };
 
 $.scrollbarSize = function scrollbarSize() {
@@ -4279,22 +4277,21 @@ class RowManager {
         const $row = this.getRow$(rowIndex);
         if (!$row || $.inVerticalViewport($row, this.bodyScrollable)) return;
 
-        const {
-            height
-        } = $row.getBoundingClientRect();
-        const {
-            top,
-            bottom
-        } = this.bodyScrollable.getBoundingClientRect();
-        const rowsInView = Math.floor((bottom - top) / height);
+        const rowHeight = $row.getBoundingClientRect().height;
+        const viewportHeight = this.bodyScrollable.clientHeight;
+        const scrollTop = this.bodyScrollable.scrollTop;
 
         let offset = 0;
+        const rowTop = $row.getBoundingClientRect().top - this.bodyScrollable.getBoundingClientRect().top + scrollTop;
+        const rowBottom = rowTop + rowHeight;
+
         if (rowIndex > this._lastScrollTo) {
-            offset = height * ((rowIndex + 1) - rowsInView);
+            offset = rowBottom - viewportHeight;
         } else {
-            offset = height * ((rowIndex + 1) - 1);
+            offset = rowTop;
         }
 
+        offset = Math.max(0, Math.min(offset, this.bodyScrollable.scrollHeight - viewportHeight));
         this._lastScrollTo = rowIndex;
         $.scrollTop(this.bodyScrollable, offset);
     }
@@ -5967,7 +5964,7 @@ class DataTable {
 DataTable.instances = 0;
 
 var name = "@paralogic/frappe-datatable";
-var version = "0.0.0-development";
+var version = "1.17.4";
 var description = "A modern datatable library for the web";
 var main = "dist/frappe-datatable.cjs.js";
 var unpkg = "dist/frappe-datatable.min.js";
