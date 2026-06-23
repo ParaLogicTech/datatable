@@ -226,7 +226,7 @@ export default class DataManager {
         }
 
         // padding row for list view
-        if (view === 'list' && this.rows.length) {
+        if (view === 'list' && rows.length) {
             this.addRow({}, rows, flatData);
         }
 
