@@ -1634,9 +1634,9 @@ function cacheHas(cache, key) {
 var _cacheHas = cacheHas;
 
 /* Built-in method references that are verified to be native. */
-var Set = _getNative(_root, 'Set');
+var Set$1 = _getNative(_root, 'Set');
 
-var _Set = Set;
+var _Set = Set$1;
 
 /**
  * This method returns `undefined`.
@@ -1965,7 +1965,8 @@ class DataManager {
         this.flatData = [];
 
         this.prepareColumns();
-        this.prepareRows();
+        this.validateData(this.data);
+        [this.rows, this.flatData] = this.prepareRows(this.data);
         this.prepareTreeRows();
         this.prepareRowView();
         this.prepareNumericColumns();
@@ -1997,6 +1998,7 @@ class DataManager {
                 sortable: false,
                 focusable: false,
                 dropdown: false,
+                sticky: true,
                 width: 32
             };
             this.columns.push(cell);
@@ -2005,14 +2007,14 @@ class DataManager {
         if (this.options.serialNoColumn && !this.hasColumnById('_rowIndex')) {
             let cell = {
                 id: '_rowIndex',
-                content: '',
+                content: this.options.serialNoColumnLabel || '',
                 align: 'center',
                 editable: false,
-                resizable: false,
+                resizable: true,
                 focusable: false,
-                dropdown: false
+                dropdown: false,
+                sticky: true
             };
-
             this.columns.push(cell);
         }
     }
@@ -2077,27 +2079,28 @@ class DataManager {
         });
     }
 
-    prepareRows() {
-        this.validateData(this.data);
-
-        this.rows = [];
-        for (let d of this.data) {
-            this.addRow(d);
+    prepareRows(data) {
+        const rows = [];
+        const flatData = [];
+        for (let d of data) {
+            this.addRow(d, rows, flatData);
         }
+        return [rows, flatData];
     }
 
-    addRow(d) {
+    addRow(d, rows, flatData) {
         if (Array.isArray(d)) {
-            this.addArrayRow(d);
+            this.addArrayRow(d, rows, flatData);
         } else if (d._isGroup) {
-            this.addGroupObject(d);
+            this.addGroupObject(d, rows, flatData);
         } else {
-            this.addObjectRow(d);
+            this.addObjectRow(d, rows, flatData);
         }
     }
 
-    addArrayRow(d) {
+    addArrayRow(d, rows, flatData) {
         const index = this._getNextRowCount();
+
         let row = [];
         let meta = {
             rowIndex: index
@@ -2115,12 +2118,13 @@ class DataManager {
             row.push('');
         }
 
-        this.rows.push(this.prepareRow(row, meta));
-        this.flatData.push(d);
+        rows.push(this.prepareRow(row, meta));
+        flatData.push(d);
     }
 
-    addObjectRow(d) {
+    addObjectRow(d, rows, flatData) {
         const index = this._getNextRowCount();
+
         let row = [];
         let meta = {
             rowIndex: index
@@ -2139,11 +2143,11 @@ class DataManager {
         meta.indent = d.indent || 0;
         meta.excludeFromTotal = d._excludeFromTotal;
 
-        this.rows.push(this.prepareRow(row, meta));
-        this.flatData.push(d);
+        rows.push(this.prepareRow(row, meta));
+        flatData.push(d);
     }
 
-    addGroupObject(group) {
+    addGroupObject(group, rows, flatData) {
         let view = group.totals ? 'tree' : 'list';
         let parentIndent;
 
@@ -2153,12 +2157,12 @@ class DataManager {
             group.totals._isGroupTotal = true;
             group.totals.indent = group.indent || 0;
             parentIndent = group.totals.indent;
-            this.addRow(group.totals);
+            this.addRow(group.totals, rows, flatData);
         }
 
         // padding row for list view
-        if (view === 'list' && this.rows.length) {
-            this.addRow({});
+        if (view === 'list' && rows.length) {
+            this.addRow({}, rows, flatData);
         }
 
         for (let i = 0; i < group.rows.length; ++i) {
@@ -2169,12 +2173,12 @@ class DataManager {
                 row.indent = parentIndent + 1;
             }
 
-            this.addRow(row);
+            this.addRow(row, rows, flatData);
 
             // padding row for list view
             if (view === 'list' && row._isGroup) {
                 if (i + 1 < group.rows.length && !group.rows[i + 1]._isGroup) {
-                    this.addRow({});
+                    this.addRow({}, rows, flatData);
                 }
             }
         }
@@ -2200,14 +2204,19 @@ class DataManager {
     }
 
     prepareRow(row, meta) {
-        const baseRowCell = {
-            rowIndex: meta.rowIndex,
-            indent: meta.indent
-        };
-
         row = row
             .map((cell, i) => this.prepareCell(cell, i))
-            .map(cell => Object.assign({}, baseRowCell, cell));
+            .map(cell => {
+                // Following code is equivalent but avoids memory allocation and copying.
+                // return Object.assign({rowIndex: meta.rowIndex, indent: meta.indent}, cell)
+                if (cell.rowIndex == null) {
+                    cell.rowIndex = meta.rowIndex;
+                }
+                if (cell.indent == null) {
+                    cell.indent = meta.indent;
+                }
+                return cell;
+            });
 
         // monkey patched in array object
         row.meta = meta;
@@ -2237,9 +2246,11 @@ class DataManager {
 
     appendRows(rows) {
         this.validateData(rows);
-
-        this.rows.push(...this.prepareRows(rows));
-        this.flatData.push(...rows);
+        const [moreRows, moreFlatData] = this.prepareRows(rows);
+        this.rows = this.rows.concat(moreRows);
+        this.flatData = this.flatData.concat(moreFlatData);
+        this.prepareTreeRows();
+        this.prepareRowView();
     }
 
     sortRows(colIndex, sortOrder = 'none') {
@@ -2684,7 +2695,8 @@ class CellManager {
             'columnmanager',
             'rowmanager',
             'datamanager',
-            'keyboard'
+            'keyboard',
+            'footer'
         ]);
 
         this.bindEvents();
@@ -2696,6 +2708,7 @@ class CellManager {
         this.bindKeyboardSelection();
         this.bindCopyCellContents();
         this.bindMouseEvents();
+        this.bindWheelEvents();
         this.bindTreeEvents();
     }
 
@@ -2744,6 +2757,7 @@ class CellManager {
             }
 
             this.focusCell($cell);
+            sessionStorage.setItem('dt-last-nav-method', 'key');
             return true;
         };
 
@@ -2836,12 +2850,26 @@ class CellManager {
             mouseDown = false;
         });
 
+        if (this.options.showTotalRow) {
+            $.on(this.footer, 'click', '.dt-cell', (e) => {
+
+                this.focusCell($(e.delegatedTarget));
+            });
+
+        }
+
         const selectArea = (e) => {
             if (!mouseDown) return;
             this.selectArea($(e.delegatedTarget));
         };
 
         $.on(this.bodyScrollable, 'mousemove', '.dt-cell', throttle$1(selectArea, 50));
+    }
+
+    bindWheelEvents() {
+        $.on(this.bodyScrollable, 'wheel', (e) => {
+            sessionStorage.setItem('dt-last-nav-method', 'scroll');
+        });
     }
 
     bindTreeEvents() {
@@ -2970,11 +2998,13 @@ class CellManager {
         // this function is called after hyperlist renders the rows after scroll,
         // focusCell calls clearSelection which resets the area selection
         // so a flag to skip it
-        // we also skip DOM focus and scroll to cell
-        // because it fights with the user scroll
+        // we skip scroll to cell
+        // and also skip DOM focus (if user is scrolling) because it fights with the user scroll
+        const skipDOMFocus = sessionStorage.getItem('dt-last-nav-method') !== 'key';
+
         this.focusCell($cell, {
+            skipDOMFocus,
             skipClearSelection: 1,
-            skipDOMFocus: 1,
             skipScrollToCell: 1
         });
     }
@@ -2991,7 +3021,6 @@ class CellManager {
 
     _selectArea($cell1, $cell2) {
         if ($cell1 === $cell2) return false;
-
         const cells = this.getCellsInRange($cell1, $cell2);
         if (!cells) return false;
 
@@ -3022,9 +3051,17 @@ class CellManager {
             const cell2 = $.data($cell2);
 
             colIndex1 = +cell1.colIndex;
-            rowIndex1 = +cell1.rowIndex;
             colIndex2 = +cell2.colIndex;
-            rowIndex2 = +cell2.rowIndex;
+
+            if (this.columnmanager.sortState) {
+                this.sortedColumn = true;
+                rowIndex1 = this.datamanager.rowViewOrder.indexOf(parseInt(cell1.rowIndex, 10));
+                rowIndex2 = this.datamanager.rowViewOrder.indexOf(parseInt(cell2.rowIndex, 10));
+            } else {
+                rowIndex1 = +cell1.rowIndex;
+                rowIndex2 = +cell2.rowIndex;
+            }
+
         }
 
         if (rowIndex1 > rowIndex2) {
@@ -3056,7 +3093,11 @@ class CellManager {
             }
             colIndex = colIndex1;
         });
-
+        if (this.columnmanager.sortState) {
+            cells.forEach(selectedCells => {
+                selectedCells[1] = this.datamanager.rowViewOrder[selectedCells[1]];
+            });
+        }
         return cells;
     }
 
@@ -3226,10 +3267,18 @@ class CellManager {
             // copy only focusedCell
             const {
                 colIndex,
-                rowIndex
+                rowIndex,
+                isTotalRow
             } = $.data($cell1);
-            const cell = this.getCell(colIndex, rowIndex);
-            copyTextToClipboard(cell.content);
+            let copiedContent = '';
+            if (isTotalRow) {
+                let choosenFooterCell = this.$focusedCell;
+                copiedContent = choosenFooterCell.children[0].title;
+            } else {
+                const cell = this.getCell(colIndex, rowIndex);
+                copiedContent = cell.content;
+            }
+            copyTextToClipboard(copiedContent);
             return 1;
         }
         const cells = this.getCellsInRange($cell1, $cell2);
@@ -3362,6 +3411,7 @@ class CellManager {
         }
 
         this.focusCell($cell);
+        sessionStorage.setItem('dt-last-nav-method', 'key');
         return true;
     }
 
@@ -3430,7 +3480,7 @@ class CellManager {
     }
 
     scrollToCell($cell) {
-        if ($.inViewport($cell, this.bodyScrollable)) return false;
+        if ($.inViewport($cell, this.bodyScrollable) || $.inViewport($cell, this.footer)) return false;
 
         const {
             rowIndex
@@ -3462,8 +3512,15 @@ class CellManager {
         });
 
         const row = this.datamanager.getRow(rowIndex);
+        const column = cell.column || this.datamanager.getColumn(colIndex) || {};
 
         const isBodyCell = !(isHeader || isFilter || isTotalRow);
+        const isSticky = Boolean(column.sticky);
+        const stickyColumns = this.datamanager.getColumns().filter(col => col.sticky);
+        const lastStickyColumn = stickyColumns[stickyColumns.length - 1];
+        const isLastStickyColumn = isSticky &&
+            lastStickyColumn &&
+            lastStickyColumn.colIndex === colIndex;
 
         const className = [
             'dt-cell',
@@ -3473,7 +3530,10 @@ class CellManager {
             isHeader ? 'dt-cell--header' : '',
             isHeader ? `dt-cell--header-${colIndex}` : '',
             isFilter ? 'dt-cell--filter' : '',
-            isBodyCell && (row && row.meta.isTreeNodeClose) ? 'dt-cell--tree-close' : ''
+            isBodyCell && (row && row.meta.isTreeNodeClose) ? 'dt-cell--tree-close' : '',
+            isSticky ? 'dt-cell--sticky' : '',
+            isSticky && !isBodyCell ? 'dt-cell--sticky-top' : '',
+            isLastStickyColumn ? 'dt-cell--sticky-last' : ''
         ].join(' ');
 
         return `
@@ -3671,7 +3731,7 @@ class ColumnManager {
         });
 
         $.on(this.$dropdownList, 'click', '.dt-dropdown__list-item', (e, $item) => {
-            if (!this._dropdownActiveColIndex) return;
+            if (this._dropdownActiveColIndex == null) return;
             const dropdownItems = this.options.headerDropdown;
             const { index } = $.data($item);
             const colIndex = this._dropdownActiveColIndex;
@@ -3685,6 +3745,11 @@ class ColumnManager {
         function deactivateDropdown(e) {
             _this.hideDropdown();
         }
+
+        this.stickDropdownIndex = this.options.headerDropdown
+            .findIndex(item => item.stickyAction === 'stick');
+        this.unstickDropdownIndex = this.options.headerDropdown
+            .findIndex(item => item.stickyAction === 'unstick');
 
         this.hideDropdown();
     }
@@ -3702,6 +3767,7 @@ class ColumnManager {
         const $cell = $.closest('.dt-cell', e.target);
         const { colIndex } = $.data($cell);
         this._dropdownActiveColIndex = colIndex;
+        this.updateStickyDropdownItems(this.getColumn(colIndex));
     }
 
     hideDropdown() {
@@ -3845,7 +3911,27 @@ class ColumnManager {
             .then(() => this.instance.unfreeze())
             .then(() => {
                 this.fireEvent('onSortColumn', this.getColumn(colIndex));
+                this.setSortState();
             });
+    }
+
+    saveSorting(colIndex) {
+        let currentColumn = this.getColumn(colIndex);
+        let saveSorting = {
+            [currentColumn.name]: {
+                colIndex: colIndex,
+                sortOrder: currentColumn.sortOrder
+            }
+        };
+        this.sortingKey = this.options.sortingKey ? `${this.options.sortingKey}::sortedColumns` : 'sortedColumns' ;
+        localStorage.setItem(this.sortingKey, JSON.stringify(saveSorting));
+    }
+    setSortState(sortOrder) {
+        if (sortOrder === 'none') {
+            this.sortState = false;
+        } else {
+            this.sortState = true;
+        }
     }
 
     removeColumn(colIndex) {
@@ -3860,6 +3946,20 @@ class ColumnManager {
             .then(() => {
                 this.fireEvent('onRemoveColumn', removedCol);
             });
+    }
+
+    setColumnSticky(colIndex, sticky) {
+        const column = this.getColumn(colIndex);
+        if (!column || column.sticky === sticky) {
+            return;
+        }
+
+        this.instance.freeze();
+        this.datamanager.updateColumn(colIndex, { sticky });
+
+        this.refreshHeader();
+        this.rowmanager.refreshRows()
+            .then(() => this.instance.unfreeze());
     }
 
     switchColumn(oldIndex, newIndex) {
@@ -3946,6 +4046,19 @@ class ColumnManager {
         }
     }
 
+    applySavedSortOrder() {
+
+        let key = this.options.sortingKey ? `${this.options.sortingKey}::sortedColumns` : 'sortedColumns' ;
+        let sortingConfig = JSON.parse(localStorage.getItem(key));
+        if (sortingConfig) {
+            const columnsToSort = Object.values(sortingConfig);
+            for (let column of columnsToSort) {
+                this.sortColumn(column.colIndex, column.sortOrder);
+                this.sortState = true;
+            }
+        }
+    }
+
     sortRows(colIndex, sortOrder) {
         return this.datamanager.sortRows(colIndex, sortOrder);
     }
@@ -4021,14 +4134,39 @@ class ColumnManager {
 
     getDropdownListHTML() {
         const { headerDropdown: dropdownItems } = this.options;
-
         return `
-            <div class="dt-dropdown__list">
-            ${dropdownItems.map((d, i) => `
-                <div class="dt-dropdown__list-item" data-index="${i}">${d.label}</div>
-            `).join('')}
+        <div class="dt-dropdown__list">
+        ${dropdownItems.map((d, i) => `
+            <div 
+                class="dt-dropdown__list-item${d.display ? ' dt-hidden' : ''}" 
+                data-index="${i}"
+            >
+                ${d.label}
             </div>
-        `;
+        `).join('')}
+        </div>
+    `;
+    }
+
+    toggleDropdownItem(index) {
+        $('.dt-dropdown__list', this.instance.dropdownContainer).children[index].classList.toggle('dt-hidden');
+    }
+
+    updateStickyDropdownItems(column) {
+        if (!column) return;
+        if (this.stickDropdownIndex === -1 || this.unstickDropdownIndex === -1) return;
+
+        const stickItem = this.$dropdownList.children[this.stickDropdownIndex];
+        const unstickItem = this.$dropdownList.children[this.unstickDropdownIndex];
+        if (!(stickItem && unstickItem)) return;
+
+        if (column.sticky) {
+            stickItem.classList.add('dt-hidden');
+            unstickItem.classList.remove('dt-hidden');
+        } else {
+            stickItem.classList.remove('dt-hidden');
+            unstickItem.classList.add('dt-hidden');
+        }
     }
 }
 
@@ -4849,14 +4987,19 @@ class BodyRenderer {
     renderRows(rows) {
         this.visibleRows = rows;
         this.visibleRowIndices = rows.map(row => row.meta.rowIndex);
-
+        this.instance.noData = false;
         if (rows.length === 0) {
             this.bodyScrollable.innerHTML = this.getNoDataHTML();
+            this.instance.noData = true;
+            this.footer.innerHTML = '';
             return;
         }
 
+        // Create a temporary set for faster lookups.
+        // We can't change this.visibleRowIndices as it would be breaking for users.
+        let visibleRowIndicesSet = new Set(this.visibleRowIndices);
         const rowViewOrder = this.datamanager.rowViewOrder.map(index => {
-            if (this.visibleRowIndices.includes(index)) {
+            if (visibleRowIndicesSet.has(index)) {
                 return index;
             }
             return null;
@@ -4973,7 +5116,20 @@ class BodyRenderer {
     }
 
     getNoDataHTML() {
-        return `<div class="dt-scrollable__no-data">${this.options.noDataMessage}</div>`;
+        const style = window.getComputedStyle(this.instance.header);
+        const matrix = new DOMMatrixReadOnly(style.transform);
+        const width = (-matrix.m41) + this.instance.header.clientWidth;
+        const height = this.bodyScrollable.clientHeight;
+        return `
+            <div 
+                class="dt-scrollable__no-data" 
+                style="width: ${width}px; height: ${height}px"
+            >
+                <div class="dt-scrollable__no-data no-data-message">
+                    ${this.options.noDataMessage}
+                </div>
+            </div>
+        `;
     }
 
     getToastMessageHTML(message) {
@@ -5014,6 +5170,7 @@ class Style {
 
     bindScrollHeader() {
         this._settingHeaderPosition = false;
+        this.updateStickyTopPositions(0);
 
         $.on(this.bodyScrollable, 'scroll', (e) => {
             if (this._settingHeaderPosition) return;
@@ -5021,7 +5178,8 @@ class Style {
             this._settingHeaderPosition = true;
 
             requestAnimationFrame(() => {
-                const left = -e.target.scrollLeft;
+                const scrollLeft = e.target.scrollLeft;
+                const left = -scrollLeft;
 
                 $.style(this.header, {
                     transform: `translateX(${left}px)`
@@ -5029,6 +5187,13 @@ class Style {
                 $.style(this.footer, {
                     transform: `translateX(${left}px)`
                 });
+                this.updateStickyTopPositions(scrollLeft);
+                this._settingHeaderPosition = false;
+                if (this.instance.noData) {
+                    $.style($('.no-data-message'), {
+                        left: `${this.instance.wrapper.clientWidth / 2 - (left)}px`
+                    });
+                }
                 this._settingHeaderPosition = false;
             });
         });
@@ -5120,6 +5285,8 @@ class Style {
         this.setupColumnWidth();
         this.distributeRemainingWidth();
         this.setColumnStyle();
+        this.setStickyColumnStyle();
+        this.updateStickyTopPositions(this.bodyScrollable.scrollLeft || 0);
         this.setBodyStyle();
     }
 
@@ -5277,6 +5444,8 @@ class Style {
                 this.columnmanager.setColumnHeaderWidth(column.colIndex);
                 this.columnmanager.setColumnWidth(column.colIndex);
             });
+        this.setStickyColumnStyle();
+        this.updateStickyTopPositions(this.bodyScrollable.scrollLeft || 0);
     }
 
     setBodyStyle() {
@@ -5285,7 +5454,7 @@ class Style {
         if (!firstRow) return;
         const rowWidth = $.style(firstRow, 'width');
 
-        let width = bodyWidth > rowWidth ? rowWidth : bodyWidth;
+        let width = bodyWidth > rowWidth ? rowWidth + 10 : bodyWidth;
         $.style(this.bodyScrollable, {
             width: width + 'px'
         });
@@ -5336,6 +5505,56 @@ class Style {
         colIndex = +colIndex;
         if (colIndex < 0) return null;
         return $(`.dt-cell--col-${colIndex}`, this.header);
+    }
+
+    setStickyColumnStyle() {
+        if (!this.datamanager || !this.datamanager.getColumns) return;
+
+        const stickySelectors = [];
+        let stickyOffset = 0;
+        let normalOffset = 0;
+
+        this.datamanager.getColumns().forEach((column) => {
+            const $headerCell = this.getColumnHeaderElement(column.colIndex);
+            const renderedWidth = $headerCell ? $headerCell.offsetWidth : column.width;
+
+            if (column.sticky) {
+                const selector = `.dt-cell--col-${column.colIndex}.dt-cell--sticky`;
+                const style = {
+                    left: `${stickyOffset}px`
+                };
+
+                column.stickyLeft = stickyOffset;
+                column.stickyScrollTrigger = normalOffset - stickyOffset;
+                column.renderedWidth = renderedWidth;
+                this.setStyle(selector, style);
+                stickySelectors.push(selector);
+                stickyOffset += renderedWidth;
+            }
+            normalOffset += renderedWidth;
+        });
+
+        const staleSelectors = (this._stickySelectors || [])
+            .filter(selector => !stickySelectors.includes(selector));
+
+        staleSelectors.forEach(selector => this.removeStyle(selector));
+        this._stickySelectors = stickySelectors;
+    }
+
+    updateStickyTopPositions(scrollLeft) {
+        if (!this.datamanager || !this.datamanager.getColumns) return;
+
+        const stickyColumns = this.datamanager.getColumns().filter(column => column.sticky);
+
+        stickyColumns.forEach((column) => {
+            const trigger = Math.max(0, column.stickyScrollTrigger || 0);
+            const compensation = Math.max(0, scrollLeft - trigger);
+            const cells = $.each(`.dt-cell--col-${column.colIndex}.dt-cell--sticky-top`, this.wrapper) || [];
+
+            $.style(cells, {
+                transform: compensation ? `translateX(${compensation}px)` : ''
+            });
+        });
     }
 
     getRowIndexColumnWidth() {
@@ -5401,7 +5620,11 @@ class Keyboard {
     }
 }
 
+var Freeze = "Freeze";
+var Unfreeze = "Unfreeze";
 var en = {
+	Freeze: Freeze,
+	Unfreeze: Unfreeze,
 	"Sort Ascending": "Sort Ascending",
 	"Sort Descending": "Sort Descending",
 	"Reset sorting": "Reset sorting",
@@ -5411,7 +5634,11 @@ var en = {
 	"{count} rows selected": {"1":"{count} row selected","default":"{count} rows selected"}
 };
 
+var Freeze$1 = "Bevriezen";
+var Unfreeze$1 = "Ontdooien";
 var de = {
+	Freeze: Freeze$1,
+	Unfreeze: Unfreeze$1,
 	"Sort Ascending": "Aufsteigend sortieren",
 	"Sort Descending": "Absteigend sortieren",
 	"Reset sorting": "Sortierung zurücksetzen",
@@ -5421,7 +5648,11 @@ var de = {
 	"{count} rows selected": {"1":"{count} Zeile ausgewählt","default":"{count} Zeilen ausgewählt"}
 };
 
+var Freeze$2 = "Geler";
+var Unfreeze$2 = "Dégeler";
 var fr = {
+	Freeze: Freeze$2,
+	Unfreeze: Unfreeze$2,
 	"Sort Ascending": "Trier par ordre croissant",
 	"Sort Descending": "Trier par ordre décroissant",
 	"Reset sorting": "Réinitialiser le tri",
@@ -5431,7 +5662,11 @@ var fr = {
 	"{count} rows selected": {"1":"{count} ligne sélectionnée","default":"{count} lignes sélectionnées"}
 };
 
+var Freeze$3 = "Congelare";
+var Unfreeze$3 = "Dégeler";
 var it = {
+	Freeze: Freeze$3,
+	Unfreeze: Unfreeze$3,
 	"Sort Ascending": "Ordinamento ascendente",
 	"Sort Descending": "Ordinamento decrescente",
 	"Reset sorting": "Azzeramento ordinamento",
@@ -5478,7 +5713,7 @@ class TranslationManager {
     }
 }
 
-function filterRows(rows, filters, datamanager) {
+function filterRows(rows, filters, data) {
     let filteredRowIndices = [];
 
     if (Object.keys(filters).length === 0) {
@@ -5495,7 +5730,7 @@ function filterRows(rows, filters, datamanager) {
         const cells = filteredRows.map(row => row[colIndex]);
 
         let filter = guessFilter(keyword);
-        let filterMethod = getFilterMethod(rows, filter, datamanager);
+        let filterMethod = getFilterMethod(rows, data, filter);
 
         if (filterMethod) {
             filteredRowIndices = filterMethod(filter.text, cells);
@@ -5506,12 +5741,15 @@ function filterRows(rows, filters, datamanager) {
 
     return filteredRowIndices;
 }
-function getFilterMethod(rows, filter, datamanager) {
+function getFilterMethod(rows, allData, filter) {
     const getFormattedValue = cell => {
         let formatter = CellManager.getCustomCellFormatter(cell);
+        let rowData = rows[cell.rowIndex];
+        if (allData) {
+            rowData = allData.getData(cell.rowIndex);
+        }
         if (formatter && cell.content) {
-            const data = datamanager.getData(cell.rowIndex);
-            cell.html = formatter(cell.content, rows[cell.rowIndex], cell.column, data, true);
+            cell.html = formatter(cell.content, rows[cell.rowIndex], cell.column, rowData, filter);
             return stripHTML(cell.html);
         }
         return cell.content || '';
@@ -5541,9 +5779,10 @@ function getFilterMethod(rows, filter, datamanager) {
         contains(keyword, cells) {
             return cells
                 .filter(cell => {
-                    const hay = stringCompareValue(cell);
                     const needle = (keyword || '').toLowerCase();
-                    return !needle || hay.includes(needle);
+                    return !needle ||
+                        (cell.content || '').toLowerCase().includes(needle) ||
+                        stringCompareValue(cell).includes(needle);
                 })
                 .map(cell => cell.rowIndex);
         },
@@ -5666,7 +5905,7 @@ function guessFilter(keyword = '') {
         }
     }
 
-    if (keyword.split(':').length === 2) {
+    if (keyword.split(':').length === 2 && keyword.split(':').every(v => isNumber(v.trim()))) {
         compareString = keyword.split(':');
         return {
             type: 'range',
@@ -5709,6 +5948,22 @@ function getDefaultOptions(instance) {
                 action: function (column) {
                     this.removeColumn(column.colIndex);
                 }
+            },
+            {
+                label: instance.translate('Freeze'),
+                stickyAction: 'stick',
+                display: 'hidden',
+                action: function (column) {
+                    this.setColumnSticky(column.colIndex, true);
+                }
+            },
+            {
+                label: instance.translate('Unfreeze'),
+                stickyAction: 'unstick',
+                display: 'hidden',
+                action: function (column) {
+                    this.setColumnSticky(column.colIndex, false);
+                }
             }
         ],
         events: {
@@ -5733,6 +5988,7 @@ function getDefaultOptions(instance) {
         freezeMessage: '',
         getEditor: null,
         serialNoColumn: true,
+        serialNoColumnLabel: '',
         checkboxColumn: false,
         clusterize: true,
         logs: false,
@@ -5783,6 +6039,10 @@ class DataTable {
         if (this.options.data) {
             this.refresh();
             this.columnmanager.applyDefaultSortOrder();
+            if (this.options.saveSorting) {
+                this.setupSaveSorting();
+                this.columnmanager.applySavedSortOrder();
+            }
         }
     }
 
@@ -5960,9 +6220,16 @@ class DataTable {
     sortColumn(colIndex, sortOrder) {
         this.columnmanager.sortColumn(colIndex, sortOrder);
     }
+    saveSorting(colIndex, nextSortOrder) {
+        this.columnmanager.saveSorting(colIndex, nextSortOrder);
+    }
 
     removeColumn(colIndex) {
         this.columnmanager.removeColumn(colIndex);
+    }
+
+    setColumnSticky(colIndex, sticky) {
+        this.columnmanager.setColumnSticky(colIndex, sticky);
     }
 
     scrollToLastColumn() {
@@ -6013,19 +6280,38 @@ class DataTable {
     translate(str, args) {
         return this.translationManager.translate(str, args);
     }
+    setupSaveSorting() {
+        // add options in default headerdropdown
+        let action = {
+            label: this.translate('Save Sorting'),
+            action: function (column) {
+                this.saveSorting(column.colIndex, column.sotOrder);
+            },
+            display: 'hidden'
+        };
+        this.options.headerDropdown.push(action);
+        this.columnmanager.bindDropdown();
+        // add events for onSortColumn
+        this.on('onSortColumn', function (column) {
+            this.columnmanager.toggleDropdownItem(4);
+            if (column.sortOrder === 'none') {
+                localStorage.removeItem(this.columnmanager.sortingKey);
+            }
+        });
+    }
 }
 
 DataTable.instances = 0;
 
 var name = "@paralogic/frappe-datatable";
-var version = "1.17.5";
+var version = "v1.20.6";
 var description = "A modern datatable library for the web";
 var main = "dist/frappe-datatable.cjs.js";
 var unpkg = "dist/frappe-datatable.min.js";
 var jsdelivr = "dist/frappe-datatable.min.js";
 var scripts = {"start":"yarn run dev","build":"rollup -c && NODE_ENV=production rollup -c","dev":"rollup -c -w","cy:server":"http-server -p 8989","cy:open":"cypress open","cy:run":"cypress run","test":"start-server-and-test cy:server http://localhost:8989 cy:run","test-local":"start-server-and-test cy:server http://localhost:8989 cy:open","travis-deploy-once":"travis-deploy-once","semantic-release":"semantic-release","lint":"eslint src","lint-and-build":"yarn lint && yarn build","commit":"npx git-cz"};
 var files = ["dist","src"];
-var devDependencies = {"autoprefixer":"^9.0.0","chai":"3.5.0","cypress":"^9.2.0","cz-conventional-changelog":"^2.1.0","deepmerge":"^2.0.1","eslint":"^5.0.1","eslint-config-airbnb":"^16.1.0","eslint-config-airbnb-base":"^12.1.0","eslint-plugin-import":"^2.11.0","http-server":"^0.11.1","mocha":"3.3.0","postcss-custom-properties":"^7.0.0","postcss-nested":"^3.0.0","rollup":"^0.59.4","rollup-plugin-commonjs":"^8.3.0","rollup-plugin-eslint":"^4.0.0","rollup-plugin-json":"^2.3.0","rollup-plugin-node-resolve":"^3.0.3","rollup-plugin-postcss":"^1.2.8","rollup-plugin-uglify-es":"^0.0.1","semantic-release":"^17.1.1","start-server-and-test":"^1.4.1","travis-deploy-once":"^5.0.1"};
+var devDependencies = {"autoprefixer":"^9.0.0","chai":"3.5.0","cypress":"^9.2.0","cz-conventional-changelog":"^2.1.0","deepmerge":"^2.0.1","eslint":"^5.0.1","eslint-config-airbnb":"^16.1.0","eslint-config-airbnb-base":"^12.1.0","eslint-plugin-import":"^2.11.0","http-server":"^0.11.1","mocha":"3.3.0","postcss-custom-properties":"^7.0.0","postcss-nested":"^3.0.0","rollup":"^0.59.4","rollup-plugin-commonjs":"^8.3.0","rollup-plugin-eslint":"^4.0.0","rollup-plugin-json":"^2.3.0","rollup-plugin-node-resolve":"^3.0.3","rollup-plugin-postcss":"^1.2.8","rollup-plugin-uglify-es":"^0.0.1","semantic-release":"^25.0.3","start-server-and-test":"^1.4.1","travis-deploy-once":"^5.0.1"};
 var repository = {"type":"git","url":"https://github.com/ParaLogicTech/datatable.git"};
 var keywords = ["datatable","data","grid","table"];
 var author = "Faris Ansari";
