@@ -131,7 +131,12 @@ export default class CellManager {
 
         ['left', 'right', 'up', 'down']
             .map(direction =>
-                this.keyboard.on(`shift+${direction}`, () => this.selectArea(getNextSelectionCursor(direction))));
+                this.keyboard.on(`shift+${direction}`, () => {
+                    const nextSelectionCursor = getNextSelectionCursor(direction);
+                    if (nextSelectionCursor) {
+                        this.selectArea(nextSelectionCursor);
+                    }
+                }));
     }
 
     bindCopyCellContents() {
