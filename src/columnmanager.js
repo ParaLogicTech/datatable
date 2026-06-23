@@ -93,7 +93,7 @@ export default class ColumnManager {
         });
 
         $.on(this.$dropdownList, 'click', '.dt-dropdown__list-item', (e, $item) => {
-            if (!this._dropdownActiveColIndex) return;
+            if (this._dropdownActiveColIndex == null) return;
             const dropdownItems = this.options.headerDropdown;
             const { index } = $.data($item);
             const colIndex = this._dropdownActiveColIndex;
@@ -107,6 +107,11 @@ export default class ColumnManager {
         function deactivateDropdown(e) {
             _this.hideDropdown();
         }
+
+        this.stickDropdownIndex = this.options.headerDropdown
+            .findIndex(item => item.stickyAction === 'stick');
+        this.unstickDropdownIndex = this.options.headerDropdown
+            .findIndex(item => item.stickyAction === 'unstick');
 
         this.hideDropdown();
     }
@@ -124,6 +129,7 @@ export default class ColumnManager {
         const $cell = $.closest('.dt-cell', e.target);
         const { colIndex } = $.data($cell);
         this._dropdownActiveColIndex = colIndex;
+        this.updateStickyDropdownItems(this.getColumn(colIndex));
     }
 
     hideDropdown() {
@@ -267,7 +273,27 @@ export default class ColumnManager {
             .then(() => this.instance.unfreeze())
             .then(() => {
                 this.fireEvent('onSortColumn', this.getColumn(colIndex));
+                this.setSortState();
             });
+    }
+
+    saveSorting(colIndex) {
+        let currentColumn = this.getColumn(colIndex);
+        let saveSorting = {
+            [currentColumn.name]: {
+                colIndex: colIndex,
+                sortOrder: currentColumn.sortOrder
+            }
+        };
+        this.sortingKey = this.options.sortingKey ? `${this.options.sortingKey}::sortedColumns` : 'sortedColumns' ;
+        localStorage.setItem(this.sortingKey, JSON.stringify(saveSorting));
+    }
+    setSortState(sortOrder) {
+        if (sortOrder === 'none') {
+            this.sortState = false;
+        } else {
+            this.sortState = true;
+        }
     }
 
     removeColumn(colIndex) {
@@ -282,6 +308,20 @@ export default class ColumnManager {
             .then(() => {
                 this.fireEvent('onRemoveColumn', removedCol);
             });
+    }
+
+    setColumnSticky(colIndex, sticky) {
+        const column = this.getColumn(colIndex);
+        if (!column || column.sticky === sticky) {
+            return;
+        }
+
+        this.instance.freeze();
+        this.datamanager.updateColumn(colIndex, { sticky });
+
+        this.refreshHeader();
+        this.rowmanager.refreshRows()
+            .then(() => this.instance.unfreeze());
     }
 
     switchColumn(oldIndex, newIndex) {
@@ -368,6 +408,19 @@ export default class ColumnManager {
         }
     }
 
+    applySavedSortOrder() {
+
+        let key = this.options.sortingKey ? `${this.options.sortingKey}::sortedColumns` : 'sortedColumns' ;
+        let sortingConfig = JSON.parse(localStorage.getItem(key));
+        if (sortingConfig) {
+            const columnsToSort = Object.values(sortingConfig);
+            for (let column of columnsToSort) {
+                this.sortColumn(column.colIndex, column.sortOrder);
+                this.sortState = true;
+            }
+        }
+    }
+
     sortRows(colIndex, sortOrder) {
         return this.datamanager.sortRows(colIndex, sortOrder);
     }
@@ -443,13 +496,38 @@ export default class ColumnManager {
 
     getDropdownListHTML() {
         const { headerDropdown: dropdownItems } = this.options;
-
         return `
-            <div class="dt-dropdown__list">
-            ${dropdownItems.map((d, i) => `
-                <div class="dt-dropdown__list-item" data-index="${i}">${d.label}</div>
-            `).join('')}
+        <div class="dt-dropdown__list">
+        ${dropdownItems.map((d, i) => `
+            <div 
+                class="dt-dropdown__list-item${d.display ? ' dt-hidden' : ''}" 
+                data-index="${i}"
+            >
+                ${d.label}
             </div>
-        `;
+        `).join('')}
+        </div>
+    `;
+    }
+
+    toggleDropdownItem(index) {
+        $('.dt-dropdown__list', this.instance.dropdownContainer).children[index].classList.toggle('dt-hidden');
+    }
+
+    updateStickyDropdownItems(column) {
+        if (!column) return;
+        if (this.stickDropdownIndex === -1 || this.unstickDropdownIndex === -1) return;
+
+        const stickItem = this.$dropdownList.children[this.stickDropdownIndex];
+        const unstickItem = this.$dropdownList.children[this.unstickDropdownIndex];
+        if (!(stickItem && unstickItem)) return;
+
+        if (column.sticky) {
+            stickItem.classList.add('dt-hidden');
+            unstickItem.classList.remove('dt-hidden');
+        } else {
+            stickItem.classList.remove('dt-hidden');
+            unstickItem.classList.add('dt-hidden');
+        }
     }
 }

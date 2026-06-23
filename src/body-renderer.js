@@ -16,14 +16,19 @@ export default class BodyRenderer {
     renderRows(rows) {
         this.visibleRows = rows;
         this.visibleRowIndices = rows.map(row => row.meta.rowIndex);
-
+        this.instance.noData = false;
         if (rows.length === 0) {
             this.bodyScrollable.innerHTML = this.getNoDataHTML();
+            this.instance.noData = true;
+            this.footer.innerHTML = '';
             return;
         }
 
+        // Create a temporary set for faster lookups.
+        // We can't change this.visibleRowIndices as it would be breaking for users.
+        let visibleRowIndicesSet = new Set(this.visibleRowIndices);
         const rowViewOrder = this.datamanager.rowViewOrder.map(index => {
-            if (this.visibleRowIndices.includes(index)) {
+            if (visibleRowIndicesSet.has(index)) {
                 return index;
             }
             return null;
@@ -140,7 +145,20 @@ export default class BodyRenderer {
     }
 
     getNoDataHTML() {
-        return `<div class="dt-scrollable__no-data">${this.options.noDataMessage}</div>`;
+        const style = window.getComputedStyle(this.instance.header);
+        const matrix = new DOMMatrixReadOnly(style.transform);
+        const width = (-matrix.m41) + this.instance.header.clientWidth;
+        const height = this.bodyScrollable.clientHeight;
+        return `
+            <div 
+                class="dt-scrollable__no-data" 
+                style="width: ${width}px; height: ${height}px"
+            >
+                <div class="dt-scrollable__no-data no-data-message">
+                    ${this.options.noDataMessage}
+                </div>
+            </div>
+        `;
     }
 
     getToastMessageHTML(message) {

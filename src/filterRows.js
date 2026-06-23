@@ -1,7 +1,7 @@
 import { isNumber, stripHTML } from './utils';
 import CellManager from './cellmanager';
 
-export default function filterRows(rows, filters, datamanager) {
+export default function filterRows(rows, filters, data) {
     let filteredRowIndices = [];
 
     if (Object.keys(filters).length === 0) {
@@ -18,7 +18,7 @@ export default function filterRows(rows, filters, datamanager) {
         const cells = filteredRows.map(row => row[colIndex]);
 
         let filter = guessFilter(keyword);
-        let filterMethod = getFilterMethod(rows, filter, datamanager);
+        let filterMethod = getFilterMethod(rows, data, filter);
 
         if (filterMethod) {
             filteredRowIndices = filterMethod(filter.text, cells);
@@ -30,12 +30,15 @@ export default function filterRows(rows, filters, datamanager) {
     return filteredRowIndices;
 };
 
-function getFilterMethod(rows, filter, datamanager) {
+function getFilterMethod(rows, allData, filter) {
     const getFormattedValue = cell => {
         let formatter = CellManager.getCustomCellFormatter(cell);
+        let rowData = rows[cell.rowIndex];
+        if (allData) {
+            rowData = allData.getData(cell.rowIndex);
+        }
         if (formatter && cell.content) {
-            const data = datamanager.getData(cell.rowIndex);
-            cell.html = formatter(cell.content, rows[cell.rowIndex], cell.column, data, true);
+            cell.html = formatter(cell.content, rows[cell.rowIndex], cell.column, rowData, filter);
             return stripHTML(cell.html);
         }
         return cell.content || '';
@@ -65,9 +68,10 @@ function getFilterMethod(rows, filter, datamanager) {
         contains(keyword, cells) {
             return cells
                 .filter(cell => {
-                    const hay = stringCompareValue(cell);
                     const needle = (keyword || '').toLowerCase();
-                    return !needle || hay.includes(needle);
+                    return !needle ||
+                        (cell.content || '').toLowerCase().includes(needle) ||
+                        stringCompareValue(cell).includes(needle);
                 })
                 .map(cell => cell.rowIndex);
         },
@@ -190,7 +194,7 @@ function guessFilter(keyword = '') {
         }
     }
 
-    if (keyword.split(':').length === 2) {
+    if (keyword.split(':').length === 2 && keyword.split(':').every(v => isNumber(v.trim()))) {
         compareString = keyword.split(':');
         return {
             type: 'range',

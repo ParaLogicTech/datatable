@@ -41,6 +41,10 @@ class DataTable {
         if (this.options.data) {
             this.refresh();
             this.columnmanager.applyDefaultSortOrder();
+            if (this.options.saveSorting) {
+                this.setupSaveSorting();
+                this.columnmanager.applySavedSortOrder();
+            }
         }
     }
 
@@ -218,9 +222,16 @@ class DataTable {
     sortColumn(colIndex, sortOrder) {
         this.columnmanager.sortColumn(colIndex, sortOrder);
     }
+    saveSorting(colIndex, nextSortOrder) {
+        this.columnmanager.saveSorting(colIndex, nextSortOrder);
+    }
 
     removeColumn(colIndex) {
         this.columnmanager.removeColumn(colIndex);
+    }
+
+    setColumnSticky(colIndex, sticky) {
+        this.columnmanager.setColumnSticky(colIndex, sticky);
     }
 
     scrollToLastColumn() {
@@ -270,6 +281,25 @@ class DataTable {
 
     translate(str, args) {
         return this.translationManager.translate(str, args);
+    }
+    setupSaveSorting() {
+        // add options in default headerdropdown
+        let action = {
+            label: this.translate('Save Sorting'),
+            action: function (column) {
+                this.saveSorting(column.colIndex, column.sotOrder);
+            },
+            display: 'hidden'
+        };
+        this.options.headerDropdown.push(action);
+        this.columnmanager.bindDropdown();
+        // add events for onSortColumn
+        this.on('onSortColumn', function (column) {
+            this.columnmanager.toggleDropdownItem(4);
+            if (column.sortOrder === 'none') {
+                localStorage.removeItem(this.columnmanager.sortingKey);
+            }
+        });
     }
 }
 

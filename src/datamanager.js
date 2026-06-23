@@ -30,7 +30,8 @@ export default class DataManager {
         this.flatData = [];
 
         this.prepareColumns();
-        this.prepareRows();
+        this.validateData(this.data);
+        [this.rows, this.flatData] = this.prepareRows(this.data);
         this.prepareTreeRows();
         this.prepareRowView();
         this.prepareNumericColumns();
@@ -62,6 +63,7 @@ export default class DataManager {
                 sortable: false,
                 focusable: false,
                 dropdown: false,
+                sticky: true,
                 width: 32
             };
             this.columns.push(cell);
@@ -70,14 +72,14 @@ export default class DataManager {
         if (this.options.serialNoColumn && !this.hasColumnById('_rowIndex')) {
             let cell = {
                 id: '_rowIndex',
-                content: '',
+                content: this.options.serialNoColumnLabel || '',
                 align: 'center',
                 editable: false,
-                resizable: false,
+                resizable: true,
                 focusable: false,
-                dropdown: false
+                dropdown: false,
+                sticky: true
             };
-
             this.columns.push(cell);
         }
     }
@@ -142,27 +144,28 @@ export default class DataManager {
         });
     }
 
-    prepareRows() {
-        this.validateData(this.data);
-
-        this.rows = [];
-        for (let d of this.data) {
-            this.addRow(d);
+    prepareRows(data) {
+        const rows = [];
+        const flatData = [];
+        for (let d of data) {
+            this.addRow(d, rows, flatData);
         }
+        return [rows, flatData];
     }
 
-    addRow(d) {
+    addRow(d, rows, flatData) {
         if (Array.isArray(d)) {
-            this.addArrayRow(d);
+            this.addArrayRow(d, rows, flatData);
         } else if (d._isGroup) {
-            this.addGroupObject(d);
+            this.addGroupObject(d, rows, flatData);
         } else {
-            this.addObjectRow(d);
+            this.addObjectRow(d, rows, flatData);
         }
     }
 
-    addArrayRow(d) {
+    addArrayRow(d, rows, flatData) {
         const index = this._getNextRowCount();
+
         let row = [];
         let meta = {
             rowIndex: index
@@ -180,12 +183,13 @@ export default class DataManager {
             row.push('');
         }
 
-        this.rows.push(this.prepareRow(row, meta));
-        this.flatData.push(d);
+        rows.push(this.prepareRow(row, meta));
+        flatData.push(d);
     }
 
-    addObjectRow(d) {
+    addObjectRow(d, rows, flatData) {
         const index = this._getNextRowCount();
+
         let row = [];
         let meta = {
             rowIndex: index
@@ -204,11 +208,11 @@ export default class DataManager {
         meta.indent = d.indent || 0;
         meta.excludeFromTotal = d._excludeFromTotal;
 
-        this.rows.push(this.prepareRow(row, meta));
-        this.flatData.push(d);
+        rows.push(this.prepareRow(row, meta));
+        flatData.push(d);
     }
 
-    addGroupObject(group) {
+    addGroupObject(group, rows, flatData) {
         let view = group.totals ? 'tree' : 'list';
         let parentIndent;
 
@@ -218,12 +222,12 @@ export default class DataManager {
             group.totals._isGroupTotal = true;
             group.totals.indent = group.indent || 0;
             parentIndent = group.totals.indent;
-            this.addRow(group.totals);
+            this.addRow(group.totals, rows, flatData);
         }
 
         // padding row for list view
         if (view === 'list' && this.rows.length) {
-            this.addRow({});
+            this.addRow({}, rows, flatData);
         }
 
         for (let i = 0; i < group.rows.length; ++i) {
@@ -234,12 +238,12 @@ export default class DataManager {
                 row.indent = parentIndent + 1;
             }
 
-            this.addRow(row);
+            this.addRow(row, rows, flatData);
 
             // padding row for list view
             if (view === 'list' && row._isGroup) {
                 if (i + 1 < group.rows.length && !group.rows[i + 1]._isGroup) {
-                    this.addRow({});
+                    this.addRow({}, rows, flatData);
                 }
             }
         }
@@ -265,14 +269,19 @@ export default class DataManager {
     }
 
     prepareRow(row, meta) {
-        const baseRowCell = {
-            rowIndex: meta.rowIndex,
-            indent: meta.indent
-        };
-
         row = row
             .map((cell, i) => this.prepareCell(cell, i))
-            .map(cell => Object.assign({}, baseRowCell, cell));
+            .map(cell => {
+                // Following code is equivalent but avoids memory allocation and copying.
+                // return Object.assign({rowIndex: meta.rowIndex, indent: meta.indent}, cell)
+                if (cell.rowIndex == null) {
+                    cell.rowIndex = meta.rowIndex;
+                }
+                if (cell.indent == null) {
+                    cell.indent = meta.indent;
+                }
+                return cell;
+            });
 
         // monkey patched in array object
         row.meta = meta;
@@ -302,9 +311,11 @@ export default class DataManager {
 
     appendRows(rows) {
         this.validateData(rows);
-
-        this.rows.push(...this.prepareRows(rows));
-        this.flatData.push(...rows);
+        const [moreRows, moreFlatData] = this.prepareRows(rows);
+        this.rows = this.rows.concat(moreRows);
+        this.flatData = this.flatData.concat(moreFlatData);
+        this.prepareTreeRows();
+        this.prepareRowView();
     }
 
     sortRows(colIndex, sortOrder = 'none') {
