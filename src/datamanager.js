@@ -210,6 +210,7 @@ export default class DataManager {
 
         meta.indent = d.indent || 0;
         meta.excludeFromTotal = d._excludeFromTotal;
+        if (d.is_total_row) meta.isTotalRow = 1;
 
         rows.push(this.prepareRow(row, meta));
         flatData.push(d);
@@ -338,98 +339,118 @@ export default class DataManager {
     }
 
     _sortRows(colIndex, sortOrder) {
-        if (this.options.treeView) {
-            this.treeSort(colIndex, sortOrder);
-        } else {
-            this.rowViewOrder.sort((a, b) => this.compareContent(a, b, colIndex, sortOrder));
+        const keepRowsInPlace = !this.options.treeView &&
+            this.rows.some((row, rowIndex) => this._keepsPlaceOnSort({ rowIndex, children: [] }));
+
+        if (!this.options.treeView && !keepRowsInPlace && this.currentSort.colIndex === colIndex) {
+            // reverse the array if only sortOrder changed
+            if (
+                (this.currentSort.sortOrder === 'asc' && sortOrder === 'desc') ||
+                (this.currentSort.sortOrder === 'desc' && sortOrder === 'asc')
+            ) {
+                this.reverseArray(this.rowViewOrder);
+                this.currentSort.sortOrder = sortOrder;
+                return;
+            }
+        }
+
+        const sortValue = cell => {
+            const hook = cell.column && cell.column.sortValue;
+            const value = hook ? hook(cell) : cell.content;
+            return value == null ? '' : value;
+        };
+
+        this.rowViewOrder.sort((a, b) => {
+            const aIndex = a;
+            const bIndex = b;
+
+            const aContent = sortValue(this.getCell(colIndex, a));
+            const bContent = sortValue(this.getCell(colIndex, b));
+
+            if (sortOrder === 'none') {
+                return aIndex - bIndex;
+            } else if (sortOrder === 'asc') {
+                if (aContent < bContent) return -1;
+                if (aContent > bContent) return 1;
+                if (aContent === bContent) return 0;
+            } else if (sortOrder === 'desc') {
+                if (aContent < bContent) return 1;
+                if (aContent > bContent) return -1;
+                if (aContent === bContent) return 0;
+            }
+            return 0;
+        });
+
+        if (this.options.treeView || keepRowsInPlace) {
+            this._sortTreeRows(this.options.treeView);
         }
 
         if (this.hasColumnById('_rowIndex')) {
             // update row index
             const srNoColIndex = this.getColumnIndexById('_rowIndex');
-            this.rows.forEach((row, index) => {
-                const viewIndex = this.rowViewOrder.indexOf(index);
-                const cell = row[srNoColIndex];
+            this.rowViewOrder.forEach((rowIndex, viewIndex) => {
+                const cell = this.rows[rowIndex][srNoColIndex];
                 cell.content = (viewIndex + 1) + '';
+                cell.html = null;
             });
         }
     }
 
-    treeSort(colIndex, sortOrder) {
-        let tree = [];
-        let rowMap = {};
+    _sortTreeRows(asTree = true) {
+        // Use the column sort order to rank siblings without separating their children.
+        const sortPositions = new Map();
+        this.rowViewOrder.forEach((rowIndex, position) => {
+            sortPositions.set(rowIndex, position);
+        });
 
-        // Build Tree
-        for (let i = 0; i < this.rows.length; i++) {
-            const rowIndex = this.rows[i].meta.rowIndex;
-            const currentIndent = this.rows[i].meta.indent;
+        const root = { indent: -Infinity, children: [] };
+        const ancestors = [root];
 
-            let currentNode = { parent: rowIndex, children: [] };
-            rowMap[rowIndex] = currentNode;
+        this.rows.forEach((row, rowIndex) => {
+            const indent = asTree ? Number(row.meta.indent) || 0 : 0;
+            while (ancestors[ancestors.length - 1].indent >= indent) {
+                ancestors.pop();
+            }
 
-            if (currentIndent === 0) {
-                tree.push(currentNode);
-            } else {
-                let parentIndex = rowIndex - 1;
+            const node = { rowIndex, indent, children: [] };
+            ancestors[ancestors.length - 1].children.push(node);
+            ancestors.push(node);
+        });
 
-                while (parentIndex >= 0 && this.rows[parentIndex].meta.indent >= currentIndent) {
-                    parentIndex--;
-                }
-
-                if (parentIndex >= 0) {
-                    rowMap[parentIndex].children.push(currentNode);
+        const bySortPosition = (a, b) => sortPositions.get(a.rowIndex) - sortPositions.get(b.rowIndex);
+        const rowOrder = [];
+        const appendNode = (node) => {
+            rowOrder.push(node.rowIndex);
+            appendSiblings(node.children);
+        };
+        const appendSiblings = (siblings) => {
+            let movable = [];
+            const flush = () => {
+                movable.sort(bySortPosition).forEach(appendNode);
+                movable = [];
+            };
+            for (const node of siblings) {
+                if (this._keepsPlaceOnSort(node)) {
+                    flush();
+                    appendNode(node);
+                } else {
+                    movable.push(node);
                 }
             }
-        }
-
-        // Sort Tree
-        this._sortTree(tree, colIndex, sortOrder);
-
-        // Row View Order
-        let flattenedTree = [];
-
-        let traverseNode = (node) => {
-            flattenedTree.push(node.parent);
-            if (node.children) {
-                node.children.forEach(child => traverseNode(child));
-            }
+            flush();
         };
 
-        tree.forEach(node => traverseNode(node));
-        this.rowViewOrder = flattenedTree;
+        appendSiblings(root.children);
+        this.rowViewOrder = rowOrder;
     }
 
-    _sortTree(tree, colIndex, sortOrder) {
-        if (!tree || tree.length === 0) return;
-
-        tree.sort((a, b) => this.compareContent(a.parent, b.parent, colIndex, sortOrder));
-        tree.forEach(node => {
-            this._sortTree(node.children, colIndex, sortOrder);
-        });
+    _keepsPlaceOnSort(node) {
+        const row = this.rows[node.rowIndex];
+        if (row.meta.isTotalRow) return true;
+        return node.children.length === 0 && row
+            .filter(cell => !['_rowIndex', '_checkbox'].includes(cell.column && cell.column.id))
+            .every(cell => cell.content == null || cell.content === '');
     }
-
-    compareContent(a, b, colIndex, sortOrder) {
-        const aIndex = a;
-        const bIndex = b;
-
-        let aContent = this.getCell(colIndex, a).content;
-        let bContent = this.getCell(colIndex, b).content;
-        aContent = aContent == null ? '' : aContent;
-        bContent = bContent == null ? '' : bContent;
-
-        if (sortOrder === 'none') {
-            return aIndex - bIndex;
-        } else if (sortOrder === 'asc') {
-            if (aContent < bContent) return -1;
-            if (aContent > bContent) return 1;
-            if (aContent === bContent) return 0;
-        } else if (sortOrder === 'desc') {
-            if (aContent < bContent) return 1;
-            if (aContent > bContent) return -1;
-            if (aContent === bContent) return 0;
-        }
-        return 0;
-    };
 
     reverseArray(array) {
         let left = null;

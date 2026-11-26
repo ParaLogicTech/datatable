@@ -27,41 +27,57 @@ yarn install          # deps (yarn v1, lockfile committed)
 yarn dev              # rollup watch → dist/frappe-datatable.{js,cjs.js,css}
 yarn lint             # eslint src (4-space indent, max-len 120)
 yarn build            # dev bundles, then NODE_ENV=production for the .min files
-yarn test             # Cypress (cypress/integration/) against index.html on :8989 (needs a build first)
-yarn test-local       # Cypress interactive runner
+yarn test             # Playwright (playwright/tests/) against index.html on :8989 (needs a build first)
+yarn test:ui          # Playwright UI mode
 ```
 
 - `dist/` is gitignored. Run `yarn build` or `yarn dev` before opening `index.html` or running the tests.
-- `index.html` at the repo root is the manual playground and the page the tests load. Serve it with `yarn cy:server` and open http://localhost:8989.
+- First-time Playwright setup: `yarn playwright install chromium`.
+- `index.html` at the repo root is the manual playground and the page the tests load. Serve it with `npx http-server -p 8989` and open http://localhost:8989.
 - ESLint also runs as a rollup plugin, so lint errors break the build.
-- `cypress/integration/fork_features.js` covers the fork-only features: groups, `getData`/`flatData`, `_excludeFromTotal`, tree sorting and shift+arrow. Add to it when changing fork behaviour.
+- `playwright/tests/fork_features.spec.js` covers the fork-only features: groups, `getData`/`flatData`, `_excludeFromTotal`, tree sorting and shift+arrow. Add to it when changing fork behaviour.
 - `test/*.spec.js` are upstream's old mocha specs. No script runs them, but keep them because they exist upstream.
 
 ## Build and release
 
-Releases happen automatically on every push to `master`, through `.github/workflows/test-and-release.yml`:
+**Releases are manual.** A push to `master` only lints, builds and tests (`.github/workflows/test-and-release.yml`). PRs do the same (`test-pull-request.yml`). Merging never publishes anything.
 
-1. `yarn lint-and-build` writes `dist/` on the runner. It is never committed.
-2. Cypress runs the tests.
-3. `yarn semantic-release` uses `.releaserc.json` and the default plugins:
-   - It derives the next version from conventional commits since the last `pl-v*` tag.
-   - It sets that version in `package.json` on the runner and runs `npm publish`. `"files": ["dist","src"]` ships the built `dist/`, and `publishConfig.access` is `public`.
-   - It pushes a `pl-vX.Y.Z` tag and creates a GitHub release.
+To release, run **Test and Release → Run workflow** on `master` (Actions tab), or:
 
-PRs run lint, build and tests only (`test-pull-request.yml`).
+```bash
+gh workflow run test-and-release.yml -R ParaLogicTech/datatable --ref master                                     # dry run, computed version
+gh workflow run test-and-release.yml -R ParaLogicTech/datatable --ref master -f dry_run=false                    # publish, computed version
+gh workflow run test-and-release.yml -R ParaLogicTech/datatable --ref master -f version=X.Y.Z                    # dry run, exact version
+gh workflow run test-and-release.yml -R ParaLogicTech/datatable --ref master -f version=X.Y.Z -f dry_run=false  # publish, exact version
+```
+
+The run lints, builds (`dist/` is built on the runner and never committed) and runs the Playwright tests, then releases:
+
+- **`version` blank → computed version (fork fixes).** `yarn semantic-release` uses `.releaserc.json` and the default plugins:
+  - It derives the next version from conventional commits since the last `pl-v*` tag.
+  - It sets that version in `package.json` on the runner and runs `npm publish`. `"files": ["dist","src"]` ships the built `dist/`, and `publishConfig.access` is `public`.
+  - It pushes a `pl-vX.Y.Z` tag and creates a GitHub release.
+  - Its dry run (`--dry-run`) verifies npm (OIDC) and GitHub auth and prints the version it would release.
+- **`version` given → exact version (upstream merges).**
+  - It checks the version is `X.Y.Z` and isn't on npm yet.
+  - It creates and pushes `pl-v<version>` on `master`'s HEAD. If that tag already exists, it must be in `master`'s history.
+  - It runs `npm publish` through trusted publishing and creates the GitHub release.
+  - Its dry run uses `npm publish --dry-run`. That lists the package contents but doesn't log in to npm.
+- **`dry_run` is on by default.** Always do a dry run first and check the version it reports, then run again with `dry_run` unticked.
+- The manual trigger has to stay in `test-and-release.yml`, because the npm trusted publisher only accepts that workflow file. If you rename the file, update the trusted publisher on npmjs.com too.
 
 Rules that follow from this:
 
-- **Commit messages must be conventional.** `fix:` gives a patch, `feat:` a minor, and `BREAKING CHANGE:` in the footer a major. Anything else (`chore:`, `docs:`, `test:`, `ci:`, bare messages like `1.20.7`) publishes nothing. `yarn commit` runs commitizen.
-- **Merge PRs with "Create a merge commit".** A squash merge replaces the conventional commit messages with the PR title, so nothing gets published. Squash and rebase merges also drop upstream merge commits.
-- **Don't bump `version` in `package.json`.** It stays `0.0.0-development` and semantic-release sets the real version on the runner. Because of that, the bundled `DataTable.__version__` reads `0.0.0-development`. Upstream has the same behaviour.
+- **Use conventional commit messages.** The computed version depends on them: `fix:` gives a patch, `feat:` a minor, and `BREAKING CHANGE:` in the footer a major. Anything else (`chore:`, `docs:`, `test:`, `ci:`) doesn't count towards a release. `yarn commit` runs commitizen.
+- **Merge PRs with "Create a merge commit".** A squash merge replaces the conventional commit messages with the PR title. Squash and rebase merges also drop upstream merge commits, so later upstream merges conflict again.
+- **Don't bump `version` in `package.json`.** It stays `0.0.0-development`, and the release sets the real version on the runner. Because of that, the bundled `DataTable.__version__` reads `0.0.0-development`. Upstream has the same behaviour.
 - **Fork tags are `pl-v${version}`, not `v${version}`.** Upstream's `v*` tags (fetched from the `frappe` remote) already include `v1.20.6`, `v1.20.7` and `v1.21.x` on unrelated commits. Never push upstream's tags to `origin` (no `git push --tags`).
-- **Never delete the latest `pl-v*` tag.** `pl-v1.20.7` marks `b7160fa`, the last manual release. Without a `pl-v*` tag reachable from `master`, semantic-release treats the next run as the first release and publishes **1.0.0** as `latest`.
-- npm auth uses trusted publishing (OIDC, `id-token: write`). The trusted publisher on npmjs.com points at `ParaLogicTech/datatable`, workflow `test-and-release.yml`, with no environment. If you rename the workflow file, update it there too.
-- **Versions should follow upstream's.** Until now the fork had its own line (1.17.x for v14, 1.20.x for v15). From the next upstream merge on, the fork's release should carry upstream's version at the merge point (for example, merging upstream `v1.27.1` publishes 1.27.1). Fork-only fixes in between bump the patch.
-  - semantic-release can't do this on its own: it bumps from the last `pl-v*` tag, so the merge would publish 1.21.0.
-  - Tagging the merge commit `pl-v1.27.1` before pushing suppresses the release entirely (no commits after the tag).
-  - The mechanism is still to be decided at merge time. Options: a one-off manual release, or a custom step that reads upstream's latest `v*` tag.
+- **Never delete the latest `pl-v*` tag.** Without a `pl-v*` tag reachable from `master`, semantic-release treats the next run as the first release and computes **1.0.0**.
+- npm auth uses trusted publishing (OIDC, `id-token: write`). The trusted publisher on npmjs.com points at `ParaLogicTech/datatable`, workflow `test-and-release.yml`, with no environment.
+- **Versions follow upstream's.** Earlier the fork had its own line (1.17.x for v14, up to 1.20.8 for v15). From the 1.27.1 upstream merge on:
+  - Each upstream merge is released with an **exact version**: upstream's version at the merge point. Find it with `git describe --tags --match 'v*' frappe/master` (e.g. `v1.27.1` → `version=1.27.1`). If the merged commit is past upstream's latest `v*` tag, use the next patch, or agree on a version with the user.
+  - **Don't leave `version` blank right after an upstream merge.** The computed version counts upstream's `feat:`/`fix:` commits too, and would give e.g. 1.21.0. The dry run shows this before anything is published.
+  - Fork-only fixes between merges use the **computed version** (e.g. 1.27.2).
 
 After a release, in `paralogic_v15/apps/frappe`:
 
@@ -71,7 +87,7 @@ After a release, in `paralogic_v15/apps/frappe`:
 
 To test against a bench before releasing, run `yarn build`. Then copy `dist/` and `src/` into `paralogic_v15/apps/frappe/node_modules/@paralogic/frappe-datatable/`, or `yarn link` the package. Then run `bench build --app frappe`.
 
-To check what the next release would be (on `master`, publishes nothing):
+To check the computed next version locally (on `master`, publishes nothing):
 
 ```bash
 npx semantic-release --dry-run --no-ci -r git@github.com:ParaLogicTech/datatable.git --plugins @semantic-release/commit-analyzer
@@ -96,33 +112,27 @@ Paralogic_v15 code depends on these, so keep them when merging upstream:
   - If a group has `totals`, it renders as a tree with a group-total row and indented children.
   - Otherwise it renders as a list with blank padding rows between groups.
 - **`flatData` and `getData(rowIndex)`.** `getData` returns `this.flatData[rowIndex]`, the original row object after group flattening, instead of `this.data[rowIndex]`. `appendRows` keeps it in sync. `filterRows.js` passes `allData.getData(rowIndex)` to formatters.
-- **Totals.** Rows with `_excludeFromTotal` (`meta.excludeFromTotal`) are skipped by both the `hooks.columnTotal` input and the default sum in `body-renderer.js`. Group-total rows set it automatically.
-- **Tree-aware sorting.** When `treeView` is on, `_sortRows` → `treeSort` sorts siblings within each parent and keeps the hierarchy. Sorting always does a full sort; upstream's reverse-on-toggle shortcut was dropped. The comparison logic lives in `compareContent`.
+- **Totals.** Rows with `_excludeFromTotal` (`meta.excludeFromTotal`) are skipped by both the `hooks.columnTotal` input and the default sum. This is applied in `body-renderer.js` `getTotalRow()`, alongside upstream's `isTotalRow` filter. Group-total rows set it automatically. Object rows with `is_total_row` get `meta.isTotalRow` (upstream).
+- **Sorting** is upstream's `_sortTreeRows`. It keeps the hierarchy in `treeView` and keeps empty rows and `is_total_row` rows in place, which also covers the fork's list-view padding rows. The fork's own `treeSort` was dropped in the 1.27.1 upstream merge.
 - **`this.hooks`** on the instance, built from `options.hooks` and `options.events`.
 - **Keyboard and focus.** The wrapper gets `tabIndex = 0`. `focusCell(..., skipDOMFocus)` focuses the wrapper so keyboard navigation keeps working. Arrow keys and area selection are ignored while a cell is being edited. Shift+arrow is null-guarded. `scrollToCell` calls `scrollIntoView({block:'nearest'})` and then `focus()`.
-- **Scrolling.** `rowmanager.scrollToRow` uses `$.inVerticalViewport` and computes the offset from real row positions, clamped. `$.scrollTop` is synchronous (no rAF).
+- **Scrolling.** `$.scrollTop` is synchronous (no rAF). `rowmanager.scrollToRow` is upstream's version since the 1.27.1 merge, which covers the fork's old fix.
 - **Robustness.** Cell editors may return a falsy value from `getValue()`. Selection and highlight code null-checks `$cell`. `style.js` tolerates a missing `cssRules`. `$.measureTextWidth` renders off-screen.
-- **Layout.** The window-resize handler is bound for every layout, not only `fluid`. Header cell content has no `padding-right`.
+- **Layout.** The window-resize handler is bound for every layout, not only `fluid`. Header cell content has no `padding-right`, so upstream's header-checkbox padding override was dropped too. Everything else uses upstream's frappe-ui default styles (`--dt-*` colours, header `font-weight: 500`).
 
 ## Merging upstream
 
-- The last merge was `b70e533`, with merge-base `cd5b3ba` (2026-06-13). Upstream has moved on since then: about 70 commits, Cypress replaced by Playwright, frappe-ui default styles, fuzzy and exact filters, column auto-width, `column.sortValue` and its own tree-aware sorting (`_sortTreeRows`).
-- The branch `upstream-merge` on `origin` (closed PR #5) has a worked-out merge of frappe/master `7c27012` that can be reused. Its resolutions:
-  - Upstream's sorting replaces `treeSort`.
-  - Upstream's `scrollToRow` replaces the fork's.
-  - `is_total_row` handling is added to `addObjectRow`.
-  - `excludeFromTotal` is added to upstream's total-row filter.
-  - The fork's zero header padding is kept.
-  - Upstream's Playwright workflows are taken. `fork_features.js` then needs porting to Playwright.
+- The last merge was frappe/master `7c27012` (upstream `v1.27.1`), released as 1.27.1. That merge brought in Playwright tests (replacing Cypress), frappe-ui default styles, sticky columns, fuzzy and exact text filters, column auto-width, `column.sortValue` and tree-aware sorting.
+- Release the merge with an exact version, upstream's; see "Versions follow upstream's" above.
 - Conflict hot spots:
-  - `datamanager.js`: `prepareRows`, `_sortRows`, `getData`
-  - `rowmanager.js`: `scrollToRow`
+  - `datamanager.js`: `prepareRows`/`addObjectRow` (the fork's group handling versus upstream's inline object-row code)
   - `body-renderer.js`: `getTotalRow`
-  - `style.css`: header padding
+  - `style.css`: header content padding
   - `cellmanager.js`: focus and editing guards
   - `style.js`: `bindResizeWindow`
   - `filterRows.js`: `getFormattedValue`
+  - `.github/workflows/test-and-release.yml`: keep the fork's manual-only release (no release on push; `workflow_dispatch` with `version`/`dry_run`)
+  - `README.md`: the fork's badges, install instructions and "Fork additions"
   - `package.json`: name, repo URLs, `publishConfig`, version
-  - `.gitignore`: keep `dist` ignored
 - Keep `.releaserc.json` (the `pl-v` tagFormat).
-- Merge commits aren't conventional, but semantic-release still counts the upstream `fix:`/`feat:` commits that come with them. Expect a release when the merge reaches `master`.
+- `yarn test` includes `fork_features.spec.js`. If it fails after a merge, a fork feature was lost in conflict resolution. Ideally also test in the v15 bench query reports (grouped and tree reports, totals row, keyboard navigation).

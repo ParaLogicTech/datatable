@@ -3,6 +3,22 @@ on:
   push:
     branches:
       - master
+  # Fork: releases are manual. A push to master only lints, builds and tests.
+  # Run this workflow to release: leave `version` blank for semantic-release's
+  # computed version, or give an exact one (e.g. upstream's after a merge).
+  # Must stay in this file: the npm trusted publisher is bound to test-and-release.yml.
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to publish, e.g. 1.27.1 (tagged pl-v<version>). Leave blank to let semantic-release compute it from the commits.'
+        required: false
+        type: string
+        default: ''
+      dry_run:
+        description: 'Dry run: run all checks but publish, tag and release nothing'
+        required: false
+        type: boolean
+        default: true
 
 concurrency:
   group: release-${{ github.ref }}
@@ -16,6 +32,7 @@ permissions:
 
 jobs:
   test-and-release:
+    if: github.event_name == 'push' || github.ref == 'refs/heads/master'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -28,13 +45,64 @@ jobs:
           cache: 'yarn'
       - name: Install dependencies
         run: yarn install --frozen-lockfile
-      - name: Lint, build and test
-        uses: cypress-io/github-action@v6
+      - name: Lint and build
+        run: yarn lint-and-build
+      - name: Install Playwright Chromium
+        run: yarn playwright install --with-deps chromium
+      - name: Run tests
+        id: ui-tests
+        run: yarn test
+      - name: Upload Playwright report
+        if: always() && steps.ui-tests.outcome == 'failure'
+        uses: actions/upload-artifact@v4
         with:
-          build: yarn lint-and-build
-          start: yarn cy:server
-          install: false
-      - name: Release
+          name: playwright-report
+          path: |
+            playwright-report
+            test-results
+      - name: Release (computed version)
+        if: github.event_name == 'workflow_dispatch' && inputs.version == ''
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: yarn semantic-release
+          DRY_RUN: ${{ inputs.dry_run }}
+        # a semantic-release dry run still verifies npm (OIDC) and GitHub auth
+        # and prints the version it would release
+        run: |
+          if [ "$DRY_RUN" = "true" ]; then
+            yarn semantic-release --dry-run
+          else
+            yarn semantic-release
+          fi
+      - name: Release (exact version)
+        if: github.event_name == 'workflow_dispatch' && inputs.version != ''
+        env:
+          VERSION: ${{ inputs.version }}
+          DRY_RUN: ${{ inputs.dry_run }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          TAG="pl-v$VERSION"
+          run() { if [ "$DRY_RUN" = "true" ]; then echo "[dry run] would run: $*"; else "$@"; fi; }
+          echo "$VERSION" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$' || { echo "::error::'$VERSION' is not X.Y.Z"; exit 1; }
+          if npm view "@paralogic/frappe-datatable@$VERSION" version >/dev/null 2>&1; then
+            echo "::error::$VERSION is already on npm"; exit 1
+          fi
+          # If the tag already exists (created by hand), it must be part of master's history.
+          if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
+            git merge-base --is-ancestor "$TAG" HEAD || { echo "::error::$TAG is not an ancestor of master"; exit 1; }
+          else
+            run git tag "$TAG" HEAD
+            run git push origin "$TAG"
+          fi
+          # trusted publishing needs npm >= 11.5.1
+          npm install -g npm@^11.5.1
+          npm version "$VERSION" --no-git-tag-version
+          if [ "$DRY_RUN" = "true" ]; then
+            npm publish --dry-run
+          else
+            npm publish
+          fi
+          gh release view "$TAG" >/dev/null 2>&1 || run gh release create "$TAG" --title "$TAG" --generate-notes --latest
+          if [ "$DRY_RUN" = "true" ]; then
+            echo "::notice::Dry run passed for $VERSION. Re-run with dry_run unchecked to publish."
+          fi

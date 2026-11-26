@@ -176,8 +176,12 @@ export default class CellManager {
             this.focusCell($(e.delegatedTarget));
         });
 
-        $.on(this.bodyScrollable, 'mouseup', () => {
+        const onMouseup = () => {
             mouseDown = false;
+        };
+        $.on(document, 'mouseup', onMouseup);
+        this.instance.on('onDestroy', () => {
+            $.off(document, 'mouseup', onMouseup);
         });
 
         if (this.options.showTotalRow) {
@@ -355,7 +359,10 @@ export default class CellManager {
         if (!cells) return false;
 
         this.clearSelection();
-        this._selectedCells = cells.map(index => this.getCell$(...index));
+        // cells of collapsed or virtualized rows are not in the DOM
+        this._selectedCells = cells
+            .map(index => this.getCell$(...index))
+            .filter(Boolean);
         requestAnimationFrame(() => {
             this._selectedCells.forEach($cell => {
                 if ($cell && $cell.classList) {
@@ -475,15 +482,14 @@ export default class CellManager {
             }
         }
 
-        this.$editingCell = $cell;
-        $cell.classList.add('dt-cell--editing');
-
         const $editCell = $('.dt-cell__edit', $cell);
         $editCell.innerHTML = '';
 
         const editor = this.getEditor(colIndex, rowIndex, cell.content, $editCell);
 
         if (editor) {
+            this.$editingCell = $cell;
+            $cell.classList.add('dt-cell--editing');
             this.currentCellEditor = editor;
             // initialize editing input with cell value
             editor.initValue(cell.content, rowIndex, col);
@@ -863,7 +869,8 @@ export default class CellManager {
             isBodyCell && (row && row.meta.isTreeNodeClose) ? 'dt-cell--tree-close' : '',
             isSticky ? 'dt-cell--sticky' : '',
             isSticky && !isBodyCell ? 'dt-cell--sticky-top' : '',
-            isLastStickyColumn ? 'dt-cell--sticky-last' : ''
+            isLastStickyColumn ? 'dt-cell--sticky-last' : '',
+            column.id === '_checkbox' ? 'dt-cell--checkbox' : ''
         ].join(' ');
 
         return `
@@ -919,7 +926,7 @@ export default class CellManager {
             const unit = 'px';
 
             // Add toggle and indent in the first column
-            const firstColumnIndex = this.datamanager.getColumnIndexById('_rowIndex') + 1;
+            const firstColumnIndex = this.columnmanager.getFirstColumnIndex();
             if (firstColumnIndex === cell.colIndex) {
                 const padding = ((cell.indent || 0)) * leftPadding;
                 const toggleHTML = addToggle ?

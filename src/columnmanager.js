@@ -129,7 +129,9 @@ export default class ColumnManager {
         const $cell = $.closest('.dt-cell', e.target);
         const { colIndex } = $.data($cell);
         this._dropdownActiveColIndex = colIndex;
-        this.updateStickyDropdownItems(this.getColumn(colIndex));
+        const column = this.getColumn(colIndex);
+        this.updateStickyDropdownItems(column);
+        this.updateSortDropdownItems(column);
     }
 
     hideDropdown() {
@@ -165,12 +167,6 @@ export default class ColumnManager {
             document.body.classList.remove('dt-resize');
             if (!$resizingCell) return;
             isDragging = false;
-
-            const {
-                colIndex
-            } = $.data($resizingCell);
-            this.setColumnWidth(colIndex);
-            this.style.setBodyStyle();
             $resizingCell = null;
         };
         $.on(document.body, 'mouseup', onMouseup);
@@ -197,7 +193,11 @@ export default class ColumnManager {
             this.datamanager.updateColumn(colIndex, {
                 width: finalWidth
             });
+            this.instance.resizedColumnWidths.set(this.getColumn(colIndex).id, finalWidth);
             this.setColumnHeaderWidth(colIndex);
+            this.setColumnWidth(colIndex);
+            this.style.refreshStickyColumns();
+            this.style.setBodyStyle();
         };
         $.on(document.body, 'mousemove', onMouseMove);
         this.instance.on('onDestroy', () => {
@@ -210,30 +210,14 @@ export default class ColumnManager {
             const $cell = $handle.parentNode.parentNode;
             const { colIndex } = $.data($cell);
 
-            let longestCell = this.bodyRenderer.visibleRows
-                .map(d => d[colIndex])
-                .reduce((acc, curr) => acc.content.length > curr.content.length ? acc : curr);
+            const width = this.style.getColumnContentWidth(colIndex);
+            if (!width) return;
 
-            let $longestCellHTML = this.cellmanager.getCellHTML(longestCell);
-            let $div = document.createElement('div');
-            $div.innerHTML = $longestCellHTML;
-            let cellText = $div.querySelector('.dt-cell__content').textContent;
-
-            let {
-                borderLeftWidth,
-                borderRightWidth,
-                paddingLeft,
-                paddingRight
-            } = $.getStyle(this.bodyScrollable.querySelector('.dt-cell__content'));
-
-            let padding = [borderLeftWidth, borderRightWidth, paddingLeft, paddingRight]
-                .map(parseFloat)
-                .reduce((sum, val) => sum + val);
-
-            let width = $.measureTextWidth(cellText) + padding;
             this.datamanager.updateColumn(colIndex, { width });
+            this.instance.resizedColumnWidths.set(this.getColumn(colIndex).id, width);
             this.setColumnHeaderWidth(colIndex);
             this.setColumnWidth(colIndex);
+            this.style.refreshStickyColumns();
         });
     }
 
@@ -473,7 +457,10 @@ export default class ColumnManager {
     }
 
     getFirstColumnIndex() {
-        return this.datamanager.getColumnIndexById('_rowIndex') + 1;
+        return Math.max(
+            this.datamanager.getColumnIndexById('_checkbox'),
+            this.datamanager.getColumnIndexById('_rowIndex')
+        ) + 1;
     }
 
     getHeaderCell$(colIndex) {
@@ -529,5 +516,16 @@ export default class ColumnManager {
             stickItem.classList.remove('dt-hidden');
             unstickItem.classList.add('dt-hidden');
         }
+    }
+
+    updateSortDropdownItems(column) {
+        if (!column) return;
+
+        this.options.headerDropdown.forEach((item, i) => {
+            const $item = this.$dropdownList.children[i];
+            if (item.sortAction && $item) {
+                $item.classList.toggle('dt-hidden', column.sortable === false);
+            }
+        });
     }
 }
