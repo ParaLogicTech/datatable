@@ -40,44 +40,44 @@ yarn test:ui          # Playwright UI mode
 
 ## Build and release
 
-Releases happen automatically on every push to `master`, through `.github/workflows/test-and-release.yml`:
+**Releases are manual.** A push to `master` only lints, builds and tests (`.github/workflows/test-and-release.yml`). PRs do the same (`test-pull-request.yml`). Merging never publishes anything.
 
-1. `yarn lint-and-build` writes `dist/` on the runner. It is never committed.
-2. Playwright runs the tests.
-3. `yarn semantic-release` uses `.releaserc.json` and the default plugins:
-   - It derives the next version from conventional commits since the last `pl-v*` tag.
-   - It sets that version in `package.json` on the runner and runs `npm publish`. `"files": ["dist","src"]` ships the built `dist/`, and `publishConfig.access` is `public`.
-   - It pushes a `pl-vX.Y.Z` tag and creates a GitHub release.
-
-PRs run lint, build and tests only (`test-pull-request.yml`).
-
-**Publishing an exact version** (fork-only): the same workflow has a manual `workflow_dispatch` trigger with a `version` input. On `master`, it runs lint, build and tests, then publishes that exact version instead of running semantic-release.
-- Before publishing, it checks that the version is `X.Y.Z` and isn't on npm yet.
-- It creates and pushes `pl-v<version>`, unless that tag already exists in `master`'s history. It runs `npm publish` through trusted publishing and creates the GitHub release.
-- **`dry_run` is on by default.** A dry run does all the checks and `npm publish --dry-run`, but publishes, tags and releases nothing. It doesn't exercise npm authentication: `--dry-run` never logs in. Uncheck it (`-f dry_run=false`) to publish for real.
-- Trigger it from the Actions tab, or with:
+To release, run **Test and Release → Run workflow** on `master` (Actions tab), or:
 
 ```bash
-gh workflow run test-and-release.yml -R ParaLogicTech/datatable --ref master -f version=X.Y.Z                    # dry run
-gh workflow run test-and-release.yml -R ParaLogicTech/datatable --ref master -f version=X.Y.Z -f dry_run=false  # publish
+gh workflow run test-and-release.yml -R ParaLogicTech/datatable --ref master                                     # dry run, computed version
+gh workflow run test-and-release.yml -R ParaLogicTech/datatable --ref master -f dry_run=false                    # publish, computed version
+gh workflow run test-and-release.yml -R ParaLogicTech/datatable --ref master -f version=X.Y.Z                    # dry run, exact version
+gh workflow run test-and-release.yml -R ParaLogicTech/datatable --ref master -f version=X.Y.Z -f dry_run=false  # publish, exact version
 ```
 
-The manual trigger has to stay in `test-and-release.yml`, because the npm trusted publisher only accepts that workflow file.
+The run lints, builds (`dist/` is built on the runner and never committed) and runs the Playwright tests, then releases:
+
+- **`version` blank → computed version (fork fixes).** `yarn semantic-release` uses `.releaserc.json` and the default plugins:
+  - It derives the next version from conventional commits since the last `pl-v*` tag.
+  - It sets that version in `package.json` on the runner and runs `npm publish`. `"files": ["dist","src"]` ships the built `dist/`, and `publishConfig.access` is `public`.
+  - It pushes a `pl-vX.Y.Z` tag and creates a GitHub release.
+  - Its dry run (`--dry-run`) verifies npm (OIDC) and GitHub auth and prints the version it would release.
+- **`version` given → exact version (upstream merges).**
+  - It checks the version is `X.Y.Z` and isn't on npm yet.
+  - It creates and pushes `pl-v<version>` on `master`'s HEAD. If that tag already exists, it must be in `master`'s history.
+  - It runs `npm publish` through trusted publishing and creates the GitHub release.
+  - Its dry run uses `npm publish --dry-run`. That lists the package contents but doesn't log in to npm.
+- **`dry_run` is on by default.** Always do a dry run first and check the version it reports, then run again with `dry_run` unticked.
+- The manual trigger has to stay in `test-and-release.yml`, because the npm trusted publisher only accepts that workflow file. If you rename the file, update the trusted publisher on npmjs.com too.
 
 Rules that follow from this:
 
-- **Commit messages must be conventional.** `fix:` gives a patch, `feat:` a minor, and `BREAKING CHANGE:` in the footer a major. Anything else (`chore:`, `docs:`, `test:`, `ci:`, bare messages like `1.20.7`) publishes nothing. `yarn commit` runs commitizen.
-- **Merge PRs with "Create a merge commit".** A squash merge replaces the conventional commit messages with the PR title, so nothing gets published. Squash and rebase merges also drop upstream merge commits.
-- **Don't bump `version` in `package.json`.** It stays `0.0.0-development` and semantic-release sets the real version on the runner. Because of that, the bundled `DataTable.__version__` reads `0.0.0-development`. Upstream has the same behaviour.
+- **Use conventional commit messages.** The computed version depends on them: `fix:` gives a patch, `feat:` a minor, and `BREAKING CHANGE:` in the footer a major. Anything else (`chore:`, `docs:`, `test:`, `ci:`) doesn't count towards a release. `yarn commit` runs commitizen.
+- **Merge PRs with "Create a merge commit".** A squash merge replaces the conventional commit messages with the PR title. Squash and rebase merges also drop upstream merge commits, so later upstream merges conflict again.
+- **Don't bump `version` in `package.json`.** It stays `0.0.0-development`, and the release sets the real version on the runner. Because of that, the bundled `DataTable.__version__` reads `0.0.0-development`. Upstream has the same behaviour.
 - **Fork tags are `pl-v${version}`, not `v${version}`.** Upstream's `v*` tags (fetched from the `frappe` remote) already include `v1.20.6`, `v1.20.7` and `v1.21.x` on unrelated commits. Never push upstream's tags to `origin` (no `git push --tags`).
-- **Never delete the latest `pl-v*` tag.** `pl-v1.20.7` (`b7160fa`) was the baseline for the last manual release, and `pl-v1.20.8` was the first CI release. Without a `pl-v*` tag reachable from `master`, semantic-release treats the next run as the first release and publishes **1.0.0** as `latest`.
-- npm auth uses trusted publishing (OIDC, `id-token: write`). The trusted publisher on npmjs.com points at `ParaLogicTech/datatable`, workflow `test-and-release.yml`, with no environment. If you rename the workflow file, update it there too.
-- **Versions follow upstream's.** Earlier the fork had its own line (1.17.x for v14, up to 1.20.8 for v15). From the 1.27.1 upstream merge on, each upstream merge is released as upstream's version at the merge point. Fork-only `fix:`/`feat:` commits between merges are released by semantic-release as usual (e.g. 1.27.2). semantic-release can't set an exact version, so upstream merges go like this:
-  1. On the merge branch (open PR), look up upstream's release at the merged commit with `git describe --tags --match 'v*' frappe/master`, e.g. `v1.27.1`.
-  2. **Before merging the PR**, push `pl-v<that version>` on the branch's merge commit (`git tag pl-v1.27.1 <merge-commit> && git push origin pl-v1.27.1`). The push to `master` then finds no releasable commits after the tag, and semantic-release publishes nothing. Without the tag it publishes a semantic bump (e.g. 1.21.0) that can't be undone.
-  3. Merge the PR with "Create a merge commit".
-  4. Run the manual publish (above) with `version=1.27.1`: first as a dry run, then with `dry_run=false`. It sees the existing tag in `master`'s history and publishes.
-  - If upstream's merged commit isn't exactly a release (it's past its latest `v*` tag), use the next patch of upstream's latest tag, or agree on a version with the user.
+- **Never delete the latest `pl-v*` tag.** Without a `pl-v*` tag reachable from `master`, semantic-release treats the next run as the first release and computes **1.0.0**.
+- npm auth uses trusted publishing (OIDC, `id-token: write`). The trusted publisher on npmjs.com points at `ParaLogicTech/datatable`, workflow `test-and-release.yml`, with no environment.
+- **Versions follow upstream's.** Earlier the fork had its own line (1.17.x for v14, up to 1.20.8 for v15). From the 1.27.1 upstream merge on:
+  - Each upstream merge is released with an **exact version**: upstream's version at the merge point. Find it with `git describe --tags --match 'v*' frappe/master` (e.g. `v1.27.1` → `version=1.27.1`). If the merged commit is past upstream's latest `v*` tag, use the next patch, or agree on a version with the user.
+  - **Don't leave `version` blank right after an upstream merge.** The computed version counts upstream's `feat:`/`fix:` commits too, and would give e.g. 1.21.0. The dry run shows this before anything is published.
+  - Fork-only fixes between merges use the **computed version** (e.g. 1.27.2).
 
 After a release, in `paralogic_v15/apps/frappe`:
 
@@ -87,7 +87,7 @@ After a release, in `paralogic_v15/apps/frappe`:
 
 To test against a bench before releasing, run `yarn build`. Then copy `dist/` and `src/` into `paralogic_v15/apps/frappe/node_modules/@paralogic/frappe-datatable/`, or `yarn link` the package. Then run `bench build --app frappe`.
 
-To check what the next release would be (on `master`, publishes nothing):
+To check the computed next version locally (on `master`, publishes nothing):
 
 ```bash
 npx semantic-release --dry-run --no-ci -r git@github.com:ParaLogicTech/datatable.git --plugins @semantic-release/commit-analyzer
@@ -123,7 +123,7 @@ Paralogic_v15 code depends on these, so keep them when merging upstream:
 ## Merging upstream
 
 - The last merge was frappe/master `7c27012` (upstream `v1.27.1`), released as 1.27.1. That merge brought in Playwright tests (replacing Cypress), frappe-ui default styles, sticky columns, fuzzy and exact text filters, column auto-width, `column.sortValue` and tree-aware sorting.
-- Release the merge with upstream's version; see "Versions follow upstream's" above.
+- Release the merge with an exact version, upstream's; see "Versions follow upstream's" above.
 - Conflict hot spots:
   - `datamanager.js`: `prepareRows`/`addObjectRow` (the fork's group handling versus upstream's inline object-row code)
   - `body-renderer.js`: `getTotalRow`
@@ -131,7 +131,7 @@ Paralogic_v15 code depends on these, so keep them when merging upstream:
   - `cellmanager.js`: focus and editing guards
   - `style.js`: `bindResizeWindow`
   - `filterRows.js`: `getFormattedValue`
-  - `.github/workflows/test-and-release.yml`: keep the fork's `workflow_dispatch` exact-version publish
+  - `.github/workflows/test-and-release.yml`: keep the fork's manual-only release (no release on push; `workflow_dispatch` with `version`/`dry_run`)
   - `README.md`: the fork's badges, install instructions and "Fork additions"
   - `package.json`: name, repo URLs, `publishConfig`, version
 - Keep `.releaserc.json` (the `pl-v` tagFormat).

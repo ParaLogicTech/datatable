@@ -3,17 +3,19 @@ on:
   push:
     branches:
       - master
-  # Fork: publish an exact version (e.g. upstream's after a merge) instead of
-  # semantic-release's computed one. Must stay in this file: the npm trusted
-  # publisher is bound to test-and-release.yml.
+  # Fork: releases are manual. A push to master only lints, builds and tests.
+  # Run this workflow to release: leave `version` blank for semantic-release's
+  # computed version, or give an exact one (e.g. upstream's after a merge).
+  # Must stay in this file: the npm trusted publisher is bound to test-and-release.yml.
   workflow_dispatch:
     inputs:
       version:
-        description: 'Exact version to publish, e.g. 1.27.1 (tagged pl-v<version>)'
-        required: true
+        description: 'Version to publish, e.g. 1.27.1 (tagged pl-v<version>). Leave blank to let semantic-release compute it from the commits.'
+        required: false
         type: string
+        default: ''
       dry_run:
-        description: 'Dry run: run all checks and `npm publish --dry-run`, but publish, tag and release nothing'
+        description: 'Dry run: run all checks but publish, tag and release nothing'
         required: false
         type: boolean
         default: true
@@ -58,13 +60,21 @@ jobs:
           path: |
             playwright-report
             test-results
-      - name: Release
-        if: github.event_name == 'push'
+      - name: Release (computed version)
+        if: github.event_name == 'workflow_dispatch' && inputs.version == ''
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: yarn semantic-release
-      - name: Publish exact version
-        if: github.event_name == 'workflow_dispatch'
+          DRY_RUN: ${{ inputs.dry_run }}
+        # a semantic-release dry run still verifies npm (OIDC) and GitHub auth
+        # and prints the version it would release
+        run: |
+          if [ "$DRY_RUN" = "true" ]; then
+            yarn semantic-release --dry-run
+          else
+            yarn semantic-release
+          fi
+      - name: Release (exact version)
+        if: github.event_name == 'workflow_dispatch' && inputs.version != ''
         env:
           VERSION: ${{ inputs.version }}
           DRY_RUN: ${{ inputs.dry_run }}
@@ -77,8 +87,7 @@ jobs:
           if npm view "@paralogic/frappe-datatable@$VERSION" version >/dev/null 2>&1; then
             echo "::error::$VERSION is already on npm"; exit 1
           fi
-          # The tag may have been pushed before merging (to stop semantic-release
-          # from releasing the merge); it must then be part of master's history.
+          # If the tag already exists (created by hand), it must be part of master's history.
           if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
             git merge-base --is-ancestor "$TAG" HEAD || { echo "::error::$TAG is not an ancestor of master"; exit 1; }
           else

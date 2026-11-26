@@ -82,7 +82,7 @@ DataTable works in current versions of Chrome, Edge, Firefox and Safari. Interne
 * Run `yarn lint` before committing changes
 * `yarn test` - Run the Playwright tests against `index.html` (run `yarn build` first, and `yarn playwright install chromium` once)
 * This project uses [commitizen](https://github.com/commitizen/cz-cli) for conventional commit messages, use `yarn commit` command instead of `git commit`
-* Releases are automatic: every push to `master` runs semantic-release, which publishes to npm based on the commit messages (`fix:` → patch, `feat:` → minor). See `CLAUDE.md` for details.
+* Releases are manual: run the **Test and Release** workflow on `master`. Leave `version` blank to let semantic-release compute it from the commit messages (`fix:` → patch, `feat:` → minor), or give an exact version. `dry_run` is on by default. See `CLAUDE.md` for details.
 
 ## Links
 
