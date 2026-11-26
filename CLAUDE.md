@@ -54,10 +54,12 @@ PRs run lint, build and tests only (`test-pull-request.yml`).
 **Publishing an exact version** (fork-only): the same workflow has a manual `workflow_dispatch` trigger with a `version` input. On `master`, it runs lint, build and tests, then publishes that exact version instead of running semantic-release.
 - Before publishing, it checks that the version is `X.Y.Z` and isn't on npm yet.
 - It creates and pushes `pl-v<version>`, unless that tag already exists in `master`'s history. It runs `npm publish` through trusted publishing and creates the GitHub release.
+- **`dry_run` is on by default.** A dry run does all the checks and `npm publish --dry-run`, but publishes, tags and releases nothing. It doesn't exercise npm authentication: `--dry-run` never logs in. Uncheck it (`-f dry_run=false`) to publish for real.
 - Trigger it from the Actions tab, or with:
 
 ```bash
-gh workflow run test-and-release.yml -R ParaLogicTech/datatable --ref master -f version=X.Y.Z
+gh workflow run test-and-release.yml -R ParaLogicTech/datatable --ref master -f version=X.Y.Z                    # dry run
+gh workflow run test-and-release.yml -R ParaLogicTech/datatable --ref master -f version=X.Y.Z -f dry_run=false  # publish
 ```
 
 The manual trigger has to stay in `test-and-release.yml`, because the npm trusted publisher only accepts that workflow file.
@@ -74,7 +76,7 @@ Rules that follow from this:
   1. On the merge branch (open PR), look up upstream's release at the merged commit with `git describe --tags --match 'v*' frappe/master`, e.g. `v1.27.1`.
   2. **Before merging the PR**, push `pl-v<that version>` on the branch's merge commit (`git tag pl-v1.27.1 <merge-commit> && git push origin pl-v1.27.1`). The push to `master` then finds no releasable commits after the tag, and semantic-release publishes nothing. Without the tag it publishes a semantic bump (e.g. 1.21.0) that can't be undone.
   3. Merge the PR with "Create a merge commit".
-  4. Run the manual publish (above) with `version=1.27.1`. It sees the existing tag in `master`'s history and publishes.
+  4. Run the manual publish (above) with `version=1.27.1`: first as a dry run, then with `dry_run=false`. It sees the existing tag in `master`'s history and publishes.
   - If upstream's merged commit isn't exactly a release (it's past its latest `v*` tag), use the next patch of upstream's latest tag, or agree on a version with the user.
 
 After a release, in `paralogic_v15/apps/frappe`:

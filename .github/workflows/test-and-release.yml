@@ -12,6 +12,11 @@ on:
         description: 'Exact version to publish, e.g. 1.27.1 (tagged pl-v<version>)'
         required: true
         type: string
+      dry_run:
+        description: 'Dry run: run all checks and `npm publish --dry-run`, but publish, tag and release nothing'
+        required: false
+        type: boolean
+        default: true
 
 concurrency:
   group: release-${{ github.ref }}
@@ -62,10 +67,12 @@ jobs:
         if: github.event_name == 'workflow_dispatch'
         env:
           VERSION: ${{ inputs.version }}
+          DRY_RUN: ${{ inputs.dry_run }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
           TAG="pl-v$VERSION"
+          run() { if [ "$DRY_RUN" = "true" ]; then echo "[dry run] would run: $*"; else "$@"; fi; }
           echo "$VERSION" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$' || { echo "::error::'$VERSION' is not X.Y.Z"; exit 1; }
           if npm view "@paralogic/frappe-datatable@$VERSION" version >/dev/null 2>&1; then
             echo "::error::$VERSION is already on npm"; exit 1
@@ -75,11 +82,18 @@ jobs:
           if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
             git merge-base --is-ancestor "$TAG" HEAD || { echo "::error::$TAG is not an ancestor of master"; exit 1; }
           else
-            git tag "$TAG" HEAD
-            git push origin "$TAG"
+            run git tag "$TAG" HEAD
+            run git push origin "$TAG"
           fi
           # trusted publishing needs npm >= 11.5.1
           npm install -g npm@^11.5.1
           npm version "$VERSION" --no-git-tag-version
-          npm publish
-          gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --title "$TAG" --generate-notes --latest
+          if [ "$DRY_RUN" = "true" ]; then
+            npm publish --dry-run
+          else
+            npm publish
+          fi
+          gh release view "$TAG" >/dev/null 2>&1 || run gh release create "$TAG" --title "$TAG" --generate-notes --latest
+          if [ "$DRY_RUN" = "true" ]; then
+            echo "::notice::Dry run passed for $VERSION. Re-run with dry_run unchecked to publish."
+          fi
