@@ -11,7 +11,7 @@
 ![npm bundle size (minified + gzip)](https://img.shields.io/bundlephobia/minzip/frappe-datatable.svg)
 
 
-![datatable-demo-2](https://user-images.githubusercontent.com/9355208/40740030-5412aa40-6465-11e8-8542-b0247ab1daac.gif)
+https://github.com/user-attachments/assets/86b37ba6-6f7a-4996-ac63-23407793bec3
 
 </div>
 
@@ -28,7 +28,14 @@ I was trying to remove all legacy UI components from the [frappe](https://github
 
 - **Cell**: Enable editing within individual cells and features like custom formatters, inline editing, and mouse selection. Users can easily copy cell content, navigate through cells using the keyboard, and take advantage of a custom cell editor for advanced functionality.
 - **Column**: Columns are highly flexible, allowing users to reorder, resize, and sort them with ease. Additional features include hiding/removing columns and adding custom actions.
+  - Freeze a column from its header menu so it stays in view while scrolling sideways, or set `sticky: true` on the column.
+  - Column widths fit the widest value in all rows, and widths a user resized are kept when the data refreshes.
+  - Set `sortValue` on a column to sort on a value other than the cell content.
 - **Row**: Rows support advanced interactions, including row selection, tree-structured organization, and inline filters for precise control. They handle large datasets efficiently with dynamic row heights.
+  - In tree view, sorting keeps child rows under their parent.
+  - Total rows (`is_total_row`) and blank rows keep their place when the table is sorted.
+- **Options**: `serialNoColumnLabel` sets the header of the serial number column. `saveSorting` remembers the last sort in local storage, under `sortingKey` when it is set.
+- **Fuzzy filter**: set `filterMode: 'fuzzy'` on the table, or on a single column, so an inline filter matches letters typed in order with gaps allowed (`jdmr` finds "Jordan Moreau"). Each word matches on its own, in any order, and a word of four or more letters may have one typo (`saftware` finds "Software"). Number filters such as `>100` work as before.
 
 
 ## Usage
@@ -52,11 +59,16 @@ const datatable = new DataTable('#datatable', {
 });
 ```
 
+## Browser Support
+
+DataTable works in current versions of Chrome, Edge, Firefox and Safari. Internet Explorer is not supported: the build ships ES2015 classes and arrow functions, and the styles use CSS custom properties.
+
 ## Development Setup
 
 * `yarn start` - Start dev server
 * Open `index.html` located in the root folder, and start development.
 * Run `yarn lint` before committing changes
+* `yarn test` - Run the Playwright tests against `index.html` (run `yarn playwright install chromium` once first)
 * This project uses [commitizen](https://github.com/commitizen/cz-cli) for conventional commit messages, use `yarn commit` command instead of `git commit`
 
 ## Links
