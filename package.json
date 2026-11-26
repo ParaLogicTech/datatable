@@ -1,6 +1,6 @@
 {
   "name": "@paralogic/frappe-datatable",
-  "version": "1.20.7",
+  "version": "0.0.0-development",
   "description": "A modern datatable library for the web",
   "main": "dist/frappe-datatable.cjs.js",
   "unpkg": "dist/frappe-datatable.min.js",
@@ -24,6 +24,9 @@
     "dist",
     "src"
   ],
+  "publishConfig": {
+    "access": "public"
+  },
   "devDependencies": {
     "autoprefixer": "^9.0.0",
     "chai": "3.5.0",
