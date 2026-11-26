@@ -35,7 +35,7 @@ yarn test:ui          # Playwright UI mode
 - First-time Playwright setup: `yarn playwright install chromium`.
 - `index.html` at the repo root is the manual playground and the page the tests load. Serve it with `npx http-server -p 8989` and open http://localhost:8989.
 - ESLint also runs as a rollup plugin, so lint errors break the build.
-- `playwright/tests/fork_features.spec.js` covers the fork-only features: groups, `getData`/`flatData`, `_excludeFromTotal`, tree sorting and shift+arrow. Add to it when changing fork behaviour.
+- `playwright/tests/fork_features.spec.js` covers the fork-only features: groups, `getData`/`flatData`, `_excludeFromTotal`, tree sorting, text filters on number columns, `!=` text filters, pasted filters and shift+arrow. Add to it when changing fork behaviour. `playwright/tests/keyboard_navigation.spec.js` covers the fork's arrow-key fixes (up while scrolling, sticky columns, ctrl+arrows, shift+arrow selection).
 - `test/*.spec.js` are upstream's old mocha specs. No script runs them, but keep them because they exist upstream.
 
 ## Build and release
@@ -115,9 +115,9 @@ Paralogic_v15 code depends on these, so keep them when merging upstream:
 - **Totals.** Rows with `_excludeFromTotal` (`meta.excludeFromTotal`) are skipped by both the `hooks.columnTotal` input and the default sum. This is applied in `body-renderer.js` `getTotalRow()`, alongside upstream's `isTotalRow` filter. Group-total rows set it automatically. Object rows with `is_total_row` get `meta.isTotalRow` (upstream).
 - **Sorting** is upstream's `_sortTreeRows`. It keeps the hierarchy in `treeView` and keeps empty rows and `is_total_row` rows in place, which also covers the fork's list-view padding rows. The fork's own `treeSort` was dropped in the 1.27.1 upstream merge.
 - **`this.hooks`** on the instance, built from `options.hooks` and `options.events`.
-- **Keyboard and focus.** The wrapper gets `tabIndex = 0`. `focusCell(..., skipDOMFocus)` focuses the wrapper so keyboard navigation keeps working. Arrow keys and area selection are ignored while a cell is being edited. Shift+arrow is null-guarded. `scrollToCell` calls `scrollIntoView({block:'nearest'})` and then `focus()`.
+- **Keyboard and focus.** The wrapper gets `tabIndex = 0`. `focusCell(..., skipDOMFocus)` focuses the wrapper so keyboard navigation keeps working. Arrow keys and area selection are ignored while a cell is being edited. Shift+arrow is null-guarded. `scrollToCell` scrolls the row into view (`rowmanager.scrollToRow`), keeps the cell clear of the sticky columns before it (`scrollToColumn`, which replaces `scrollIntoView`) and then calls `focus()`. Up/Down first call `bodyRenderer.renderRowsAtScrollPosition()`, which makes HyperList render synchronously (private `_renderChunk`), because it otherwise skips scrolls of a single row and every other Up press found no row above. Ctrl+Up/Down go to the first/last row as shown (`bodyRenderer.visibleRowOrder`, after sorting, filtering and collapsing), scrolling to it and rendering it first. Shift+arrow keeps the selection cursor in view without moving the focus. When the focused cell's row leaves the DOM, `bodyRenderer.restoreState` moves the focus to the wrapper so the keyboard keeps working.
 - **Scrolling.** `$.scrollTop` is synchronous (no rAF). `rowmanager.scrollToRow` is upstream's version since the 1.27.1 merge, which covers the fork's old fix.
-- **Robustness.** Cell editors may return a falsy value from `getValue()`. Selection and highlight code null-checks `$cell`. `style.js` tolerates a missing `cssRules`. `$.measureTextWidth` renders off-screen.
+- **Robustness.** Cell editors may return a falsy value from `getValue()`. Selection and highlight code null-checks `$cell`. Text filters convert number content to a string before matching (upstream throws). `!=text` leaves out cells whose whole text (or formatted value) matches, the opposite of upstream's `=text`; upstream treated it as "contains". A bare `=` or `!=` filters nothing. Inline filters apply on the `input` event, not upstream's `keydown`, so pasting or cutting with the mouse filters too. `style.js` tolerates a missing `cssRules`. `$.measureTextWidth` renders off-screen.
 - **Layout.** The window-resize handler is bound for every layout, not only `fluid`. Header cell content has no `padding-right`, so upstream's header-checkbox padding override was dropped too. Everything else uses upstream's frappe-ui default styles (`--dt-*` colours, header `font-weight: 500`).
 
 ## Merging upstream
@@ -130,9 +130,10 @@ Paralogic_v15 code depends on these, so keep them when merging upstream:
   - `style.css`: header content padding
   - `cellmanager.js`: focus and editing guards
   - `style.js`: `bindResizeWindow`
-  - `filterRows.js`: `getFormattedValue`
+  - `filterRows.js`: `getFormattedValue`, `contentText`/`isTextEqual`/`notEqualsText`, the bare `=`/`!=` guard
+  - `columnmanager.js`: `bindFilter` listens to `input`
   - `.github/workflows/test-and-release.yml`: keep the fork's manual-only release (no release on push; `workflow_dispatch` with `version`/`dry_run`)
   - `README.md`: the fork's badges, install instructions and "Fork additions"
   - `package.json`: name, repo URLs, `publishConfig`, version
 - Keep `.releaserc.json` (the `pl-v` tagFormat).
-- `yarn test` includes `fork_features.spec.js`. If it fails after a merge, a fork feature was lost in conflict resolution. Ideally also test in the v15 bench query reports (grouped and tree reports, totals row, keyboard navigation).
+- `yarn test` includes `fork_features.spec.js` and `keyboard_navigation.spec.js`. If it fails after a merge, a fork feature was lost in conflict resolution. Ideally also test in the v15 bench query reports (grouped and tree reports, totals row, keyboard navigation).

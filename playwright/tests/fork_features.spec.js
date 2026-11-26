@@ -114,6 +114,90 @@ test.describe('Total row', () => {
     });
 });
 
+test.describe('Inline filters', () => {
+    test('pasted filter text is applied', async ({ page }) => {
+        await createTable(page, { data: [{ name: 'r1', qty: 1 }, { name: 'r2', qty: 2 }], inlineFilters: true });
+        await page.evaluate(() => window.forkTable.columnmanager.toggleFilter(true));
+
+        // insertText changes the value like a paste does: an input event, but no keydown
+        const filter = page.locator('#datatable2 .dt-filter[data-col-index="0"]');
+        await filter.focus();
+        await page.keyboard.insertText('r2');
+        await expectNames(page, ['r2']);
+
+        // clearing it without the keyboard, like cutting with the mouse
+        await filter.evaluate($input => {
+            $input.select();
+            document.execCommand('delete');
+        });
+        await expectNames(page, ['r1', 'r2']);
+    });
+
+    test('a text filter on a number column matches the formatted value', async ({ page }) => {
+        const errors = [];
+        page.on('pageerror', error => errors.push(error.message));
+
+        await page.evaluate(() => {
+            window.forkTable = new window.DataTable('#datatable2', {
+                columns: [
+                    { id: 'name', name: 'Name' },
+                    { id: 'amount', name: 'Amount', format: value => value.toLocaleString('en-US') }
+                ],
+                data: [{ name: 'r1', amount: 1069 }, { name: 'r2', amount: 25 }, { name: 'r3', amount: 0 }],
+                serialNoColumn: false,
+                checkboxColumn: false,
+                inlineFilters: true
+            });
+        });
+        const rows = page.locator('#datatable2 .dt-scrollable .dt-row');
+        await expect(rows).toHaveCount(3);
+
+        await page.evaluate(() => window.forkTable.columnmanager.applyFilter({ 1: '1,069' }));
+        await expectNames(page, ['r1']);
+
+        await page.evaluate(() => window.forkTable.columnmanager.applyFilter({ 1: 'abc' }));
+        await expect(rows).toHaveCount(0);
+
+        expect(errors).toEqual([]);
+    });
+
+    test('!= leaves out cells whose whole text matches', async ({ page }) => {
+        await page.evaluate(() => {
+            window.forkTable = new window.DataTable('#datatable2', {
+                columns: [
+                    { id: 'name', name: 'Name' },
+                    { id: 'status', name: 'Status', format: value => `<b>${value}</b>` },
+                    { id: 'qty', name: 'Qty' }
+                ],
+                data: [
+                    { name: 'r1', status: 'Paid', qty: 5 },
+                    { name: 'r2', status: 'Unpaid', qty: 0 },
+                    { name: 'r3', status: 'Draft', qty: 7 }
+                ],
+                serialNoColumn: false,
+                checkboxColumn: false,
+                inlineFilters: true
+            });
+        });
+        const filter = filters => page.evaluate(f => window.forkTable.columnmanager.applyFilter(f), filters);
+
+        await filter({ 1: '!=paid' });
+        await expectNames(page, ['r2', 'r3']);
+
+        await filter({ 1: '!= Draft ' });
+        await expectNames(page, ['r1', 'r2']);
+
+        await filter({ 2: '!=5' });
+        await expectNames(page, ['r2', 'r3']);
+
+        // a bare = or != filters nothing until a value is typed
+        await filter({ 2: '!=' });
+        await expectNames(page, ['r1', 'r2', 'r3']);
+        await filter({ 2: '= ' });
+        await expectNames(page, ['r1', 'r2', 'r3']);
+    });
+});
+
 test.describe('Keyboard', () => {
     test('shift+arrow past the table edge does not throw', async ({ page }) => {
         const errors = [];

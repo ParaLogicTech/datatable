@@ -359,7 +359,8 @@ export default class ColumnManager {
         const handler = e => {
             this.applyFilter(this.getAppliedFilters());
         };
-        $.on(this.header, 'keydown', '.dt-filter', debounce(handler, 300));
+        // input, not keydown: it also fires on paste, cut, drag and drop and autofill
+        $.on(this.header, 'input', '.dt-filter', debounce(handler, 300));
     }
 
     applyFilter(filters) {
