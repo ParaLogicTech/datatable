@@ -6,9 +6,10 @@
 
 **A modern datatable library for the web**
 
-[![Test and Release](https://github.com/frappe/datatable/workflows/Test%20and%20Release/badge.svg)](https://github.com/frappe/datatable/actions?query=workflow%3A%22Test+and+Release%22)
-[![npm version](https://badge.fury.io/js/frappe-datatable.svg)](https://badge.fury.io/js/frappe-datatable)
-![npm bundle size (minified + gzip)](https://img.shields.io/bundlephobia/minzip/frappe-datatable.svg)
+[![Test and Release](https://github.com/ParaLogicTech/datatable/actions/workflows/test-and-release.yml/badge.svg)](https://github.com/ParaLogicTech/datatable/actions/workflows/test-and-release.yml)
+[![npm version](https://img.shields.io/npm/v/@paralogic/frappe-datatable.svg)](https://www.npmjs.com/package/@paralogic/frappe-datatable)
+
+> ParaLogic's fork of [frappe/datatable](https://github.com/frappe/datatable), published as `@paralogic/frappe-datatable`. See [Fork additions](#fork-additions).
 
 
 ![datatable-demo-2](https://user-images.githubusercontent.com/9355208/40740030-5412aa40-6465-11e8-8542-b0247ab1daac.gif)
@@ -31,18 +32,30 @@ I was trying to remove all legacy UI components from the [frappe](https://github
 - **Row**: Rows support advanced interactions, including row selection, tree-structured organization, and inline filters for precise control. They handle large datasets efficiently with dynamic row heights.
 
 
+### Fork additions
+
+- **Grouped data**: pass `{ _isGroup: true, rows: [...] }` objects in `data`. They can be nested.
+  - With `totals: {...}`, the group renders as a tree: a group-total row with its rows indented under it.
+  - Without `totals`, the group renders as a flat list, with a blank row between groups.
+- **`getData(rowIndex)`** returns the original row object, also for rows that came from a group.
+- **`_excludeFromTotal: true`** on a row object leaves it out of the total row and of `hooks.columnTotal`. Group-total rows set it automatically.
+- **Tree-aware sorting**: with `treeView`, sorting orders siblings and keeps child rows under their parent.
+- Keyboard navigation, scrolling and focus fixes, plus extra null checks for custom editors and selection.
+
 ## Usage
 
 ```bash
-yarn add frappe-datatable
+yarn add @paralogic/frappe-datatable
 # or
-npm install frappe-datatable
+npm install @paralogic/frappe-datatable
 ```
 
 > Note: [`sortablejs`](https://github.com/RubaXa/Sortable) is required to be installed as well.
 
 
 ```js
+import DataTable from '@paralogic/frappe-datatable';
+
 const datatable = new DataTable('#datatable', {
   columns: [ 'First Name', 'Last Name', 'Position' ],
   data: [
@@ -57,7 +70,9 @@ const datatable = new DataTable('#datatable', {
 * `yarn start` - Start dev server
 * Open `index.html` located in the root folder, and start development.
 * Run `yarn lint` before committing changes
+* `yarn test` - Run the Cypress tests against `index.html` (run `yarn build` first)
 * This project uses [commitizen](https://github.com/commitizen/cz-cli) for conventional commit messages, use `yarn commit` command instead of `git commit`
+* Releases are automatic: every push to `master` runs semantic-release, which publishes to npm based on the commit messages (`fix:` → patch, `feat:` → minor). See `CLAUDE.md` for details.
 
 ## Links
 

@@ -31,7 +31,10 @@ export default class DataManager {
 
         this.prepareColumns();
         this.validateData(this.data);
-        [this.rows, this.flatData] = this.prepareRows(this.data);
+        // not `[this.rows, this.flatData] = ...`: uglify-es 3.0.3 crashes on destructuring into members
+        const [rows, flatData] = this.prepareRows(this.data);
+        this.rows = rows;
+        this.flatData = flatData;
         this.prepareTreeRows();
         this.prepareRowView();
         this.prepareNumericColumns();
