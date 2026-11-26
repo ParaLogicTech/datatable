@@ -302,28 +302,19 @@ export default class RowManager {
     }
 
     scrollToRow(rowIndex) {
-        rowIndex = +rowIndex;
-        this._lastScrollTo = this._lastScrollTo || 0;
         const $row = this.getRow$(rowIndex);
-        if (!$row || $.inVerticalViewport($row, this.bodyScrollable)) return;
+        if (!$row) return;
 
-        const rowHeight = $row.getBoundingClientRect().height;
-        const viewHeight = this.bodyScrollable.clientHeight;
-        const scrollTop = this.bodyScrollable.scrollTop;
+        const { top, bottom } = $row.getBoundingClientRect();
+        const scrollable = this.bodyScrollable;
+        const viewTop = scrollable.getBoundingClientRect().top + scrollable.clientTop;
+        const viewBottom = viewTop + scrollable.clientHeight;
 
-        let offset = 0;
-        const rowTop = $row.getBoundingClientRect().top - this.bodyScrollable.getBoundingClientRect().top + scrollTop;
-        const rowBottom = rowTop + rowHeight;
-
-        if (rowIndex > this._lastScrollTo) {
-            offset = rowBottom - viewHeight;
-        } else {
-            offset = rowTop;
+        if (top < viewTop) {
+            $.scrollTop(scrollable, scrollable.scrollTop - (viewTop - top));
+        } else if (bottom > viewBottom) {
+            $.scrollTop(scrollable, scrollable.scrollTop + (bottom - viewBottom));
         }
-
-        offset = Math.max(0, Math.min(offset, this.bodyScrollable.scrollHeight - viewHeight));
-        this._lastScrollTo = rowIndex;
-        $.scrollTop(this.bodyScrollable, offset);
     }
 
     getRowHTML(row, props) {
@@ -359,7 +350,7 @@ export default class RowManager {
         let title = `title="Filter based on ${props.name || 'Index'}"`;
         const dataAttr = makeDataAttributeString(props);
         return `<input class="dt-filter dt-input" type="text" ${dataAttr} tabindex="1"
-            ${props.colIndex === 0 ? 'disabled' : title} />`;
+            ${props.colIndex === 0 && this.datamanager.getStandardColumnCount() ? 'disabled' : title} />`;
     }
 
     selector(rowIndex) {

@@ -3,6 +3,15 @@ on:
   push:
     branches:
       - master
+  # Fork: publish an exact version (e.g. upstream's after a merge) instead of
+  # semantic-release's computed one. Must stay in this file: the npm trusted
+  # publisher is bound to test-and-release.yml.
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Exact version to publish, e.g. 1.27.1 (tagged pl-v<version>)'
+        required: true
+        type: string
 
 concurrency:
   group: release-${{ github.ref }}
@@ -16,6 +25,7 @@ permissions:
 
 jobs:
   test-and-release:
+    if: github.event_name == 'push' || github.ref == 'refs/heads/master'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -28,13 +38,48 @@ jobs:
           cache: 'yarn'
       - name: Install dependencies
         run: yarn install --frozen-lockfile
-      - name: Lint, build and test
-        uses: cypress-io/github-action@v6
+      - name: Lint and build
+        run: yarn lint-and-build
+      - name: Install Playwright Chromium
+        run: yarn playwright install --with-deps chromium
+      - name: Run tests
+        id: ui-tests
+        run: yarn test
+      - name: Upload Playwright report
+        if: always() && steps.ui-tests.outcome == 'failure'
+        uses: actions/upload-artifact@v4
         with:
-          build: yarn lint-and-build
-          start: yarn cy:server
-          install: false
+          name: playwright-report
+          path: |
+            playwright-report
+            test-results
       - name: Release
+        if: github.event_name == 'push'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: yarn semantic-release
+      - name: Publish exact version
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          VERSION: ${{ inputs.version }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          TAG="pl-v$VERSION"
+          echo "$VERSION" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$' || { echo "::error::'$VERSION' is not X.Y.Z"; exit 1; }
+          if npm view "@paralogic/frappe-datatable@$VERSION" version >/dev/null 2>&1; then
+            echo "::error::$VERSION is already on npm"; exit 1
+          fi
+          # The tag may have been pushed before merging (to stop semantic-release
+          # from releasing the merge); it must then be part of master's history.
+          if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
+            git merge-base --is-ancestor "$TAG" HEAD || { echo "::error::$TAG is not an ancestor of master"; exit 1; }
+          else
+            git tag "$TAG" HEAD
+            git push origin "$TAG"
+          fi
+          # trusted publishing needs npm >= 11.5.1
+          npm install -g npm@^11.5.1
+          npm version "$VERSION" --no-git-tag-version
+          npm publish
+          gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --title "$TAG" --generate-notes --latest

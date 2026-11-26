@@ -64,10 +64,24 @@ export default class BodyRenderer {
     }
 
     render() {
-        const rows = this.datamanager.getRowsForView();
+        const rows = this.getRowsToRender();
         this.renderRows(rows);
         // setDimensions requires atleast 1 row to exist in dom
         this.instance.setDimensions();
+    }
+
+    // Keep the current tree expand/collapse state on a full re-render
+    getRowsToRender() {
+        const rows = this.datamanager.getRowsForView();
+        let closedIndent = null;
+        return rows.filter(row => {
+            const { indent, isTreeNodeClose } = row.meta;
+            if (closedIndent !== null && indent > closedIndent) {
+                return false;
+            }
+            closedIndent = isTreeNodeClose ? indent : null;
+            return true;
+        });
     }
 
     renderFooter() {
@@ -94,14 +108,12 @@ export default class BodyRenderer {
             };
         });
 
+        const rows = this.visibleRows.filter(row => !row.meta.isTotalRow && !row.meta.excludeFromTotal);
         const totalRow = totalRowTemplate.map((cell, i) => {
             if (cell.content === '') return cell;
 
             if (this.options.hooks.columnTotal) {
-                const columnValues = this.visibleRows
-                    .filter(d => !d.meta || !d.meta.excludeFromTotal)
-                    .map(row => row[i].content);
-
+                const columnValues = rows.map(row => row[i].content);
                 const result = this.options.hooks.columnTotal.call(this.instance, columnValues, cell);
                 if (result != null) {
                     cell.content = result;
@@ -109,7 +121,7 @@ export default class BodyRenderer {
                 }
             }
 
-            cell.content = this.visibleRows.filter(d => !d.meta.excludeFromTotal).reduce((acc, prevRow) => {
+            cell.content = rows.reduce((acc, prevRow) => {
                 const prevCell = prevRow[i];
                 if (typeof prevCell.content === 'number') {
                     if (acc == null) acc = 0;
