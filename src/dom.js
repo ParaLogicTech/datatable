@@ -178,19 +178,6 @@ $.inViewport = (el, parentEl) => {
     return top >= pTop && left >= pLeft && bottom <= pBottom && right <= pRight;
 };
 
-$.inVerticalViewport = (el, parentEl) => {
-    const {
-        top,
-        bottom
-    } = el.getBoundingClientRect();
-    const {
-        top: pTop,
-        bottom: pBottom
-    } = parentEl.getBoundingClientRect();
-
-    return top >= pTop && bottom <= pBottom;
-};
-
 $.scrollTop = function scrollTop(element, pixels) {
     element.scrollTop = pixels;
 };
