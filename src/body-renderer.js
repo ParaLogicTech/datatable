@@ -16,6 +16,7 @@ export default class BodyRenderer {
     renderRows(rows) {
         this.visibleRows = rows;
         this.visibleRowIndices = rows.map(row => row.meta.rowIndex);
+        this.visibleRowOrder = [];
         this.instance.noData = false;
         if (rows.length === 0) {
             this.bodyScrollable.innerHTML = this.getNoDataHTML();
@@ -33,6 +34,8 @@ export default class BodyRenderer {
             }
             return null;
         }).filter(index => index !== null);
+        // the visible row indices in the order they are shown
+        this.visibleRowOrder = rowViewOrder;
 
         const computedStyle = getComputedStyle(this.bodyScrollable);
 
@@ -61,6 +64,21 @@ export default class BodyRenderer {
         }
 
         this.renderFooter();
+    }
+
+    // HyperList renders on the next animation frame, and only once the scroll position
+    // has moved by more than a row since its last render. Keyboard navigation scrolls
+    // one row at a time and needs the rows around the focused cell in the DOM right away.
+    renderRowsAtScrollPosition() {
+        const hyperlist = this.hyperlist;
+        if (!hyperlist || this.instance.noData) return;
+
+        const rendered = hyperlist._renderChunk();
+        hyperlist._lastRepaint = hyperlist._getScrollPosition();
+
+        if (rendered !== false) {
+            this.restoreState();
+        }
     }
 
     render() {
@@ -140,6 +158,13 @@ export default class BodyRenderer {
         this.rowmanager.highlightCheckedRows();
         this.cellmanager.selectAreaOnClusterChanged();
         this.cellmanager.focusCellOnClusterChanged();
+
+        // the focused cell's row was scrolled out of the DOM, which drops the focus to the page;
+        // keep it on the wrapper, which handles the keyboard
+        const $focusedCell = this.cellmanager.$focusedCell;
+        if ($focusedCell && !$focusedCell.isConnected && document.activeElement === document.body) {
+            this.instance.wrapper.focus({ preventScroll: true });
+        }
     }
 
     showToastMessage(message, hideAfter) {

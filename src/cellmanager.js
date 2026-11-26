@@ -132,9 +132,15 @@ export default class CellManager {
         ['left', 'right', 'up', 'down']
             .map(direction =>
                 this.keyboard.on(`shift+${direction}`, () => {
+                    this.renderRowsForMove(direction);
+
                     const nextSelectionCursor = getNextSelectionCursor(direction);
-                    if (nextSelectionCursor) {
-                        this.selectArea(nextSelectionCursor);
+                    if (!nextSelectionCursor) return;
+
+                    this.selectArea(nextSelectionCursor);
+                    if (this.$selectionCursor === nextSelectionCursor) {
+                        // the focus stays where the selection started
+                        this.scrollCellIntoView(nextSelectionCursor);
                     }
                 }));
     }
@@ -312,9 +318,10 @@ export default class CellManager {
 
         if (!$cell || $cell === this.$selectionCursor) return;
 
-        // selectArea needs $focusedCell
+        // selectArea needs $focusedCell; when its row has scrolled out of the DOM,
+        // the old element still has the indices that the selection range is built from
         const fCell = $.data(this.$focusedCell);
-        this.$focusedCell = this.getCell$(fCell.colIndex, fCell.rowIndex);
+        this.$focusedCell = this.getCell$(fCell.colIndex, fCell.rowIndex) || this.$focusedCell;
 
         this.selectArea($cell);
     }
@@ -714,6 +721,8 @@ export default class CellManager {
             this.deactivateEditing();
         }
 
+        this.renderRowsForMove(direction);
+
         let $cell = this.$focusedCell;
 
         if (direction === 'left' || direction === 'shift+tab') {
@@ -800,11 +809,26 @@ export default class CellManager {
     }
 
     getTopMostCell$(colIndex) {
-        return this.getCell$(colIndex, this.rowmanager.getFirstRowIndex());
+        return this.getEndRowCell$(colIndex, 'top');
     }
 
     getBottomMostCell$(colIndex) {
-        return this.getCell$(colIndex, this.rowmanager.getLastRowIndex());
+        return this.getEndRowCell$(colIndex, 'bottom');
+    }
+
+    // The first or last row as shown, after sorting, filtering and collapsing tree nodes.
+    // With virtual scrolling that row may not be rendered, so scroll to it and render it first.
+    getEndRowCell$(colIndex, end) {
+        const bodyRenderer = this.instance.bodyRenderer;
+        const rowOrder = bodyRenderer.visibleRowOrder || [];
+        if (!rowOrder.length) return null;
+
+        const rowIndex = end === 'top' ? rowOrder[0] : rowOrder[rowOrder.length - 1];
+        const scrollable = this.bodyScrollable;
+        $.scrollTop(scrollable, end === 'top' ? 0 : scrollable.scrollHeight);
+        bodyRenderer.renderRowsAtScrollPosition();
+
+        return this.getCell$(colIndex, rowIndex);
     }
 
     getCell(colIndex, rowIndex) {
@@ -815,16 +839,54 @@ export default class CellManager {
         return $.style($('.dt-row', this.bodyScrollable), 'height');
     }
 
-    scrollToCell($cell) {
-        if ($.inViewport($cell, this.bodyScrollable) || $.inViewport($cell, this.footer)) return false;
+    // Before moving up or down: the row above or below may not be rendered yet after the
+    // last scroll. Rendering it re-renders the focused cell and the selection cursor too,
+    // which updates this.$focusedCell and this.$selectionCursor.
+    renderRowsForMove(direction) {
+        if (direction === 'up' || direction === 'down') {
+            this.instance.bodyRenderer.renderRowsAtScrollPosition();
+        }
+    }
 
-        const {
-            rowIndex
-        } = $.data($cell);
-        this.rowmanager.scrollToRow(rowIndex);
-        $cell.scrollIntoView({block: 'nearest', inline: 'nearest'});
-        $cell.focus();
+    scrollToCell($cell) {
+        if ($.inViewport($cell, this.footer)) return false;
+
+        const wasInViewport = $.inViewport($cell, this.bodyScrollable);
+        this.scrollCellIntoView($cell);
+        if (!wasInViewport) {
+            $cell.focus();
+        }
         return false;
+    }
+
+    // Scrolls only as far as needed. $.inViewport can't be used to skip this,
+    // because it doesn't know about the sticky columns covering the cell.
+    scrollCellIntoView($cell) {
+        this.rowmanager.scrollToRow($.data($cell).rowIndex);
+        this.scrollToColumn($cell);
+    }
+
+    // Like scrollIntoView({inline: 'nearest'}), but keeps the cell clear of the
+    // sticky columns before it, which cover the left part of the viewport
+    scrollToColumn($cell) {
+        const scrollable = this.bodyScrollable;
+        const { colIndex } = $.data($cell);
+        const viewLeft = scrollable.getBoundingClientRect().left + scrollable.clientLeft;
+        const viewRight = viewLeft + scrollable.clientWidth;
+
+        const stickyWidth = $.each('.dt-cell--sticky', $cell.parentElement)
+            .filter($stickyCell => +$.data($stickyCell).colIndex < +colIndex)
+            .reduce((width, $stickyCell) => width + $stickyCell.getBoundingClientRect().width, 0);
+        const left = viewLeft + stickyWidth;
+
+        const { left: cellLeft, right: cellRight } = $cell.getBoundingClientRect();
+
+        if (cellLeft < left) {
+            scrollable.scrollLeft -= left - cellLeft;
+        } else if (cellRight > viewRight) {
+            // a cell wider than the viewport stays aligned to the left
+            scrollable.scrollLeft += Math.min(cellRight - viewRight, cellLeft - left);
+        }
     }
 
     getRowCountPerPage() {
