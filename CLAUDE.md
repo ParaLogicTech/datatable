@@ -22,10 +22,12 @@ yarn install          # deps (yarn v1, lockfile committed)
 yarn dev              # rollup watch → dist/frappe-datatable.{js,cjs.js,css}
 yarn lint             # eslint src (4-space indent, max-len 120)
 yarn build            # dev bundles, then NODE_ENV=production for the .min files
-yarn test             # Cypress against index.html on http-server :8989 (needs a build first)
+yarn test             # Playwright (playwright/tests/) against index.html on :8989 (needs a build first)
+yarn test:ui          # Playwright UI mode
 ```
 
 - `dist/` is gitignored. Run `yarn build` or `yarn dev` before opening `index.html` or running the tests.
+- First-time Playwright setup: `yarn playwright install chromium`.
 - `index.html` at the repo root is the manual playground. Serve it with `yarn cy:server` and open http://localhost:8989.
 - ESLint also runs as a rollup plugin, so lint errors break the build.
 - `test/*.spec.js` are old mocha specs and are not wired into any script.
@@ -35,7 +37,7 @@ yarn test             # Cypress against index.html on http-server :8989 (needs a
 Releases happen automatically on every push to `master`, through `.github/workflows/test-and-release.yml`:
 
 1. `yarn lint-and-build` writes `dist/` on the runner. It is never committed.
-2. Cypress runs the tests.
+2. Playwright runs the tests.
 3. `yarn semantic-release` uses `.releaserc.json` and the default plugins:
    - It derives the next version from conventional commits since the last `pl-v*` tag.
    - It sets that version in `package.json` on the runner and runs `npm publish`. `"files": ["dist","src"]` ships the built `dist/`, and `publishConfig.access` is `public`.
@@ -85,26 +87,25 @@ Paralogic_v15 code depends on these, so keep them when merging upstream:
   - If a group has `totals`, it renders as a tree with a group-total row and indented children.
   - Otherwise it renders as a list with blank padding rows between groups.
 - **`flatData` and `getData(rowIndex)`.** `getData` returns `this.flatData[rowIndex]`, the original row object after group flattening, instead of `this.data[rowIndex]`. `appendRows` keeps it in sync. `filterRows.js` passes `allData.getData(rowIndex)` to formatters.
-- **Totals.** Rows with `_excludeFromTotal` (`meta.excludeFromTotal`) are skipped by both the `hooks.columnTotal` input and the default sum. Group-total rows set it automatically.
-- **Tree-aware sorting.** When `treeView` is on, `_sortRows` → `treeSort` sorts siblings within each parent and keeps the hierarchy. Sorting always does a full sort; upstream's reverse-on-toggle shortcut was dropped. The comparison logic lives in `compareContent`.
+- **Totals.** Rows with `_excludeFromTotal` (`meta.excludeFromTotal`) are skipped by both the `hooks.columnTotal` input and the default sum. Group-total rows set it automatically. This is applied in `body-renderer.js` `getTotalRow()`, alongside upstream's `isTotalRow` filter.
+- **Sorting** is upstream's `_sortTreeRows`. It keeps the hierarchy in `treeView` and keeps empty rows and `is_total_row` rows in place, which also covers the fork's list-view padding rows. The fork's own `treeSort` was dropped in the 2026-11 upstream merge.
 - **`this.hooks`** on the instance, built from `options.hooks` and `options.events`.
 - **Keyboard and focus.** The wrapper gets `tabIndex = 0`. `focusCell(..., skipDOMFocus)` focuses the wrapper so keyboard navigation keeps working. Arrow keys and area selection are ignored while a cell is being edited. Shift+arrow is null-guarded. `scrollToCell` calls `scrollIntoView({block:'nearest'})` and then `focus()`.
-- **Scrolling.** `rowmanager.scrollToRow` uses `$.inVerticalViewport` and computes the offset from real row positions, clamped. `$.scrollTop` is synchronous (no rAF).
+- **Scrolling.** `$.scrollTop` is synchronous (no rAF). `rowmanager.scrollToRow` is upstream's version, which covers the fork's old fix. `$.inVerticalViewport` in `dom.js` is no longer used.
 - **Robustness.** Cell editors may return a falsy value from `getValue()`. Selection and highlight code null-checks `$cell`. `style.js` tolerates a missing `cssRules`. `$.measureTextWidth` renders off-screen.
-- **Layout.** The window-resize handler is bound for every layout, not only `fluid`. Header cell content has no `padding-right`.
+- **Layout.** The window-resize handler is bound for every layout, not only `fluid`. Header cell content has no `padding-right`, so upstream's header-checkbox padding override was dropped too.
 
 ## Merging upstream
 
-- The last merge was `b70e533`, with merge-base `cd5b3ba` (2026-06-13). Upstream has moved on since then: about 70 commits, Cypress replaced by Playwright, more `filterRows`/`style.js` work, column auto-width and fuzzy filter.
-- Expect conflicts in:
-  - `datamanager.js`: `prepareRows`, `_sortRows`, `getData`
-  - `rowmanager.js`: `scrollToRow`
+- The last merge was frappe/master at `7c27012` (2026-11, on branch `upstream-merge`). That merge brought in Playwright tests (replacing Cypress), frappe-ui default styles (new `--dt-*` colours, header `font-weight: 500`), sticky columns, fuzzy and exact text filters, column auto-width, `column.sortValue` and tree-aware sorting.
+- Conflict hot spots:
+  - `datamanager.js`: `prepareRows`/`addObjectRow` (the fork's group handling versus upstream's inline object-row code)
+  - `body-renderer.js`: `getTotalRow`
+  - `style.css`: header content padding
   - `cellmanager.js`: focus and editing guards
   - `style.js`: `bindResizeWindow`
   - `filterRows.js`: `getFormattedValue`
-  - `body-renderer.js`: the totals row
-  - `package.json`: name, repo URLs, `publishConfig`
-  - `.github/workflows/`: keep the fork's workflows, or port upstream's Playwright setup on purpose
-- Keep `.releaserc.json` (the `pl-v` tagFormat).
-- Merge commits aren't conventional, so a merge alone doesn't release. Upstream's own `fix:`/`feat:` commits come along with the merge, though, and semantic-release counts them too. Expect a release after an upstream merge.
-- After merging, run `yarn build`, run `yarn test` and smoke-test in `index.html`. Ideally also test in the v15 bench query reports (grouped and tree reports, totals row, keyboard navigation).
+  - `package.json`: name, repo URLs, `publishConfig`, version
+- Take upstream's workflows; they are already Playwright-based. Keep `.releaserc.json` (the `pl-v` tagFormat).
+- The tests don't cover the fork's own features (groups, `flatData`/`getData`, `excludeFromTotal`). After merging, check those by hand in `index.html` or with a quick browser script. Ideally also test in the v15 bench query reports (grouped and tree reports, totals row, keyboard navigation).
+- Merge commits aren't conventional, but semantic-release still counts the upstream `fix:`/`feat:` commits that come with them. Expect a release when the merge reaches `master`.
