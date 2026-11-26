@@ -85,6 +85,13 @@ function getFilterMethod(rows, allData, filter) {
 
     const numberCompareValue = cell => parseFloat(cell.content);
 
+    // the content can be a number, which has no toLowerCase
+    const contentText = cell => String(cell.content == null ? '' : cell.content).toLowerCase();
+
+    // the whole text of the cell, or of its formatted value, matches
+    const isTextEqual = (cell, keyword) =>
+        contentText(cell).trim() === keyword || stringCompareValue(cell).trim() === keyword;
+
     const getCompareValues = (cell, keyword) => {
         if (cell.column.compareValue) {
             const compareValues = cell.column.compareValue(cell, keyword);
@@ -106,7 +113,7 @@ function getFilterMethod(rows, allData, filter) {
                 .filter(cell => {
                     const needle = (keyword || '').toLowerCase();
                     return !needle ||
-                        (cell.content || '').toLowerCase().includes(needle) ||
+                        contentText(cell).includes(needle) ||
                         stringCompareValue(cell).includes(needle);
                 })
                 .map(cell => cell.rowIndex);
@@ -116,7 +123,7 @@ function getFilterMethod(rows, allData, filter) {
             const words = keyword.split(/\s+/).filter(Boolean);
             return cells
                 .filter(cell => {
-                    const texts = [String(cell.content || '').toLowerCase(), stringCompareValue(cell)];
+                    const texts = [contentText(cell), stringCompareValue(cell)];
                     return words.every(word => texts.some(text => isFuzzyMatch(word, text)));
                 })
                 .map(cell => cell.rowIndex);
@@ -142,10 +149,13 @@ function getFilterMethod(rows, allData, filter) {
 
         equalsText(keyword, cells) {
             return cells
-                .filter(cell => {
-                    const content = cell.content == null ? '' : String(cell.content);
-                    return content.trim().toLowerCase() === keyword || stringCompareValue(cell).trim() === keyword;
-                })
+                .filter(cell => isTextEqual(cell, keyword))
+                .map(cell => cell.rowIndex);
+        },
+
+        notEqualsText(keyword, cells) {
+            return cells
+                .filter(cell => !isTextEqual(cell, keyword))
                 .map(cell => cell.rowIndex);
         },
 
@@ -210,6 +220,11 @@ function guessFilter(keyword = '') {
         compareString = keyword.slice(2);
     }
 
+    // nothing to compare with yet, while the value after = or != is being typed
+    if ((keyword.startsWith('=') || keyword.startsWith('!=')) && !compareString.trim()) {
+        return {};
+    }
+
     if (keyword.startsWith('>')) {
         if (compareString) {
             return {
@@ -248,6 +263,10 @@ function guessFilter(keyword = '') {
                 text: Number(keyword.slice(2).trim())
             };
         }
+        return {
+            type: 'notEqualsText',
+            text: compareString.trim().toLowerCase()
+        };
     }
 
     if (isNumber(compareString)) {
