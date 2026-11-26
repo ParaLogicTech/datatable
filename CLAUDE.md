@@ -30,7 +30,8 @@ yarn test:ui          # Playwright UI mode
 - First-time Playwright setup: `yarn playwright install chromium`.
 - `index.html` at the repo root is the manual playground. Serve it with `yarn cy:server` and open http://localhost:8989.
 - ESLint also runs as a rollup plugin, so lint errors break the build.
-- `test/*.spec.js` are old mocha specs and are not wired into any script.
+- `test/*.spec.js` are upstream's old mocha specs; no script runs them. Keep them (they exist upstream).
+- `playwright/tests/fork_features.spec.js` covers the fork-only features (groups, `getData`, `_excludeFromTotal`, shift+arrow). Add to it when changing fork behaviour.
 
 ## Build and release
 
@@ -91,7 +92,7 @@ Paralogic_v15 code depends on these, so keep them when merging upstream:
 - **Sorting** is upstream's `_sortTreeRows`. It keeps the hierarchy in `treeView` and keeps empty rows and `is_total_row` rows in place, which also covers the fork's list-view padding rows. The fork's own `treeSort` was dropped in the 2026-11 upstream merge.
 - **`this.hooks`** on the instance, built from `options.hooks` and `options.events`.
 - **Keyboard and focus.** The wrapper gets `tabIndex = 0`. `focusCell(..., skipDOMFocus)` focuses the wrapper so keyboard navigation keeps working. Arrow keys and area selection are ignored while a cell is being edited. Shift+arrow is null-guarded. `scrollToCell` calls `scrollIntoView({block:'nearest'})` and then `focus()`.
-- **Scrolling.** `$.scrollTop` is synchronous (no rAF). `rowmanager.scrollToRow` is upstream's version, which covers the fork's old fix. `$.inVerticalViewport` in `dom.js` is no longer used.
+- **Scrolling.** `$.scrollTop` is synchronous (no rAF). `rowmanager.scrollToRow` is upstream's version, which covers the fork's old fix.
 - **Robustness.** Cell editors may return a falsy value from `getValue()`. Selection and highlight code null-checks `$cell`. `style.js` tolerates a missing `cssRules`. `$.measureTextWidth` renders off-screen.
 - **Layout.** The window-resize handler is bound for every layout, not only `fluid`. Header cell content has no `padding-right`, so upstream's header-checkbox padding override was dropped too.
 
@@ -107,5 +108,6 @@ Paralogic_v15 code depends on these, so keep them when merging upstream:
   - `filterRows.js`: `getFormattedValue`
   - `package.json`: name, repo URLs, `publishConfig`, version
 - Take upstream's workflows; they are already Playwright-based. Keep `.releaserc.json` (the `pl-v` tagFormat).
-- The tests don't cover the fork's own features (groups, `flatData`/`getData`, `excludeFromTotal`). After merging, check those by hand in `index.html` or with a quick browser script. Ideally also test in the v15 bench query reports (grouped and tree reports, totals row, keyboard navigation).
+- `yarn test` includes `fork_features.spec.js`. If it fails after a merge, a fork feature was lost in conflict resolution. Ideally also test in the v15 bench query reports (grouped and tree reports, totals row, keyboard navigation).
+- Don't delete files that still exist upstream, even dead ones like the `test/` mocha specs: it only creates modify/delete conflicts on later merges. Only fork-only code is fair game for cleanup.
 - Merge commits aren't conventional, but semantic-release still counts the upstream `fix:`/`feat:` commits that come with them. Expect a release when the merge reaches `master`.
